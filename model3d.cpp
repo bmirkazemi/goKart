@@ -153,6 +153,7 @@ public:
 	Texture tex;
 	GLfloat lightPosition[4];
 	Vec cameraPosition;
+	Vec spot;
 	bool shadows;
 	Global() {
 		for (int i = 0; i < 65336; i++) {
@@ -176,6 +177,10 @@ public:
 
 class Object {
 public:
+	bool reverse;
+	bool forward ;
+	float leftRotate;
+	float rightRotate;
 	float velocity;
 	Vec *vert;
 	Vec *norm;
@@ -183,6 +188,7 @@ public:
 	Matrix m;
 	int nverts;
 	int nfaces;
+	Vec dir;
 	Vec pos, vel, rot;
 	Vec color;
 	Vec a[1000][3];
@@ -195,6 +201,8 @@ public:
 		delete [] norm;
 	}
 	Object(int nv, int nf) {
+		forward = reverse = false;
+		leftRotate = rightRotate = 0;
 		velocity = 0;
 		vert = new Vec[nv];
 		face = new iVec[nf];
@@ -206,6 +214,9 @@ public:
 		VecZero(rot);
 		VecMake(.9, .9, 0, color);
 		g.identity33(m);
+		dir[0] = 0.0 - pos[0];
+		dir[1] = 0.0 - pos[1];
+		dir[2] = 0.0 - pos[2];
 	}
 	void setColor(float r, float g, float b) {
 		VecMake(r, g, b, color);
@@ -912,11 +923,9 @@ void physics(void)
 	Vec camUpdate = {kart->pos[0], kart->pos[1] + 0.7f, kart->pos[2] + 2.0f};
 	VecMake(camUpdate[0], camUpdate[1], camUpdate[2], g.cameraPosition);
 	
-	//apply gravity to kart
+	//apply gravity and physics to kart
 	kart->applyGravity();
-	
-	//move kart
-	kart->translate(0, 0, -kart->velocity);
+	kart->translate(-kart->leftRotate * 0.01 + kart->rightRotate * 0.01, 0, -kart->velocity);
 	
 	//check if kart collided with track
 	if(kart->pos[1] <= track->pos[1]) {
@@ -1052,9 +1061,16 @@ void render(void)
 	glLoadIdentity();
 	//for documentation...
 	Vec up = {0,1,0};
+	kart->dir[0] = -kart->leftRotate * 0.05;
+	kart->dir[0] = kart->rightRotate * 0.01;
+	VecMake(kart->pos[0] + kart->dir[0], kart->pos[1] + kart->dir[1], kart->pos[2] + kart->dir[2], g.spot);
+	g.spot[0]-= kart->leftRotate * 0.01;
+	g.spot[0]+= kart->rightRotate * 0.01;
+	
+	
 	gluLookAt(
 		g.cameraPosition[0], g.cameraPosition[1], g.cameraPosition[2],
-		g.cameraPosition[0], g.cameraPosition[1], g.cameraPosition[2]-1.0,
+		g.spot[0], g.spot[1] + 0.5f, g.spot[2],
 		up[0], up[1], up[2]);
 	glLightfv(GL_LIGHT0, GL_POSITION, g.lightPosition);
 	//
@@ -1078,27 +1094,82 @@ void render(void)
 	r.left = 10;
 	r.center = 0;
 	ggprint8b(&r, 16, 0x00887766, "3480 Demo");
-	ggprint8b(&r, 16, 0x0066ff00,
-		(g.shadows) ? "<S> Shadows (On)" : "<S> Shadows (Off)");
+	ggprint8b(&r, 16, 0x00887766, "W forward, S backward, A turn left, D turn right");
 	//
 	glPopAttrib();
 }
 
 void callControls() {
+	
+	
+	//exit game
+	if (g.keypress[XK_Escape]) {
+		g.done = 1;
+	}
+	
+	//check for stopped
+	if (kart->velocity == 0) {
+		kart->forward = false;
+		kart->reverse = false;
+	}
+	
+	
+	//drive forward
 	if (g.keypress[XK_w]) {
+		kart->reverse = false;
+		kart->forward = true;
 		kart->velocity += 0.001;
 		if (kart->velocity >= 1.0) {
 			kart->velocity = 1.0;
 		}
-	} else {
-		kart->velocity -= 0.001;
+	} else if (kart->reverse == false) {
+		kart->velocity -= 0.005;
 		if (kart->velocity <= 0) {
 			kart->velocity = 0;
 		}
 	}
 	
+	//drive reverse
+	if (g.keypress[XK_s]) {
+		kart->forward = false;
+		kart->reverse = true;
+		kart->velocity -= 0.001;
+	} else if (kart->forward == false) {
+		kart->velocity += 0.005;
+		if (kart->velocity >= 0) {
+			kart->velocity = 0;
+		}
+	}
 	
+	//turn left
+	if (g.keypress[XK_a]) {
+		if (kart->forward == true) {
+			if (kart->leftRotate < 10) {
+				kart->rotate(0, 0.5, 0);
+				kart->leftRotate += 0.5;
+			} else {
+				kart->leftRotate = 10;
+			}
+		}
+	} else if (kart->leftRotate > 0) {
+		kart->rotate(0, -0.5, 0);
+		kart->leftRotate -= 0.5;
+	}
 	
+	//turn right
+	if (g.keypress[XK_d]) {
+		if (kart->forward == true) {
+			if (kart->rightRotate < 10) {
+				kart->rotate(0, -0.5, 0);
+				kart->rightRotate += 0.5;
+			} else {
+				kart->rightRotate = 10;
+			}
+		}
+	} else if (kart->rightRotate > 0) {
+		kart->rotate(0, 0.5, 0);
+		kart->rightRotate -= 0.5;
+	}	
 }
 
 
