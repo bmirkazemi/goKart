@@ -1,6 +1,6 @@
 #goKart
 
-##WHEN YOU MAKE CHANGES...
+## WHEN YOU MAKE CHANGES...
 
 ## add the files 
 git add * 
