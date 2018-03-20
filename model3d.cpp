@@ -534,7 +534,7 @@ void init(void)
 	kart = buildModel("./kart/kartuse.obj");
 	kart->scale(0.5);
 	kart->rotate(0, 180, 0);
-	kart->translate(-1.0, 0, 0);
+	kart->translate(-0.5, 0, 0);
 	kart->setColor(.8,0,.9);
 	
 	//bowser
@@ -542,7 +542,7 @@ void init(void)
 	bowser = buildModel("./bowser/kk_kart.obj");
 	bowser->scale(0.5);
 	bowser->rotate(0, 180, 0);
-	bowser->translate(1.0, 0, 0);
+	bowser->translate(-0.5, 0, -3.0);
 	bowser->setColor(.4,.2,.9);
 }
 
@@ -1090,6 +1090,7 @@ void render(void)
 	//drawFloor();
 	//cube.draw();
 	track->draw();
+	bowser->draw();
 	kart->draw();
 	renderShadows();
 	//
