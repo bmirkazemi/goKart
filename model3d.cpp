@@ -387,7 +387,7 @@ public:
 			glPopMatrix();
 		}
 	}
-} cube(8, 12), *track, *kart;
+} cube(8, 12), *track, *kart, *bowser;
 
 int main(void)
 {
@@ -536,6 +536,14 @@ void init(void)
 	kart->rotate(0, 180, 0);
 	kart->translate(-1.0, 0, 0);
 	kart->setColor(.8,0,.9);
+	
+	//bowser
+	Object *buildModel(const char *mname);
+	bowser = buildModel("./bowser/kk_kart.obj");
+	bowser->scale(0.5);
+	bowser->rotate(0, 180, 0);
+	bowser->translate(1.0, 0, 0);
+	bowser->setColor(.4,.2,.9);
 }
 
 void init_opengl(void)
@@ -927,6 +935,11 @@ void physics(void)
 	kart->applyGravity();
 	kart->translate(-kart->leftRotate * 0.01 + kart->rightRotate * 0.01, 0, -kart->velocity);
 	
+	bowser->applyGravity();
+	if(bowser->pos[1] <= track->pos[1]) {
+		bowser->pos[1] = track->pos[1];
+	}
+
 	//check if kart collided with track
 	if(kart->pos[1] <= track->pos[1]) {
 		kart->pos[1] = track->pos[1];
