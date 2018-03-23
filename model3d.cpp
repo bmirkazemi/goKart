@@ -1,22 +1,7 @@
 //
-//author:  Gordon Griesel
-//program: model3d.cpp
-//date:    summer 2014
-//         fall 2016
-//         summer 2017
-//
-//Demonstrates stencil shadows in OpenGL
-//Stencil operations learned from article by Josh Beam.
-//http://joshbeam.com/articles/stenciled_shadow_volumes_in_opengl/
-//
-//Also a simple 3D model imported from
-//a text file.
-//File format is Wavefront .obj format.
-//Program will recognize v-vert, f-face, n-normal components.
-//
-//almost done.
-//all shadows must be put into a nice long list
-//then shadows are drawn at the end
+// authors: Bijan Mirkazemi & Robert Pierucci
+// date: Spring 2018
+// purpose: 3d game similar to mario kart
 //
 #include <string.h>
 #include <unistd.h>
@@ -28,7 +13,6 @@
 #include <GL/gl.h>
 #include <GL/glx.h>
 #include <GL/glu.h>
-//#include "log.h"
 #include "fonts.h"
 #include <iostream>
 using namespace std;
@@ -73,7 +57,6 @@ a[1]=MY_INFINITY*(b[1]-g.lightPosition[1])+g.lightPosition[1];\
 a[2]=MY_INFINITY*(b[2]-g.lightPosition[2])+g.lightPosition[2]
 const Flt DTR = 1.0 / 180.0 * PI;
 
-//X Windows variables
 Display *dpy;
 Window win;
 GLXContext glc;
@@ -97,17 +80,13 @@ public:
     Image(const char *fname) {
         if (fname[0] == '\0')
             return;
-        //printf("fname **%s**\n", fname);
         char name[40];
         strcpy(name, fname);
         int slen = strlen(name);
         name[slen-4] = '\0';
-        //printf("name **%s**\n", name);
         char ppmname[80];
         sprintf(ppmname,"%s.ppm", name);
-        //printf("ppmname **%s**\n", ppmname);
         char ts[100];
-        //system("convert eball.jpg eball.ppm");
         sprintf(ts, "convert %s %s", fname, ppmname);
         system(ts);
         //sprintf(ts, "%s", name);
@@ -362,8 +341,6 @@ public:
 			glEnd();
 			glPopMatrix();
 		}
-		//if (g.shadows)
-		//	renderShadows();
 	}
 	void triShadowVolume() {
 		for (int i=0; i<nshadows; i++) {
@@ -420,9 +397,8 @@ void cleanupXWindows(void)
 
 void set_title(void)
 {
-	//Set the window title bar.
 	XMapWindow(dpy, win);
-	XStoreName(dpy, win, "object with shadow");
+	XStoreName(dpy, win, "Vector Kart");
 }
 
 void setup_screen_res(const int w, const int h)
@@ -434,16 +410,10 @@ void setup_screen_res(const int w, const int h)
 
 void initXWindows(void)
 {
-    //Look here for information on XVisualInfo parameters.
-    //http://www.talisman.org/opengl-1.1/Reference/glXChooseVisual.html
-    //
     GLint att[] = { GLX_RGBA,
                     GLX_STENCIL_SIZE, 2,
                     GLX_DEPTH_SIZE, 24,
                     GLX_DOUBLEBUFFER, None };
-    //GLint att[] = { GLX_RGBA,GLX_DEPTH_SIZE,24,GLX_DOUBLEBUFFER,None };
-    //GLint att[] = { GLX_RGBA,GLX_DEPTH_SIZE,24,None };
-    //XVisualInfo *vi;
     XSetWindowAttributes swa;
     setup_screen_res(640, 480);
     dpy = XOpenDisplay(NULL);
@@ -469,43 +439,6 @@ void initXWindows(void)
     glXMakeCurrent(dpy, win, glc);
 }
 
-
-/*
-old code replaced in 2016-fall to fix stencil buffer.
-void initXWindows(void)
-{
-	Window root;
-	GLint att[] = { GLX_RGBA, GLX_DEPTH_SIZE, 24, GLX_DOUBLEBUFFER, None };
-	//GLint att[] = { GLX_RGBA, GLX_DEPTH_SIZE, 24, None };
-	XVisualInfo *vi;
-	Colormap cmap;
-	XSetWindowAttributes swa;
-
-	setup_screen_res(640, 480);
-	dpy = XOpenDisplay(NULL);
-	if (dpy == NULL) {
-		printf("\n\tcannot connect to X server\n\n");
-		exit(EXIT_FAILURE);
-	}
-	root = DefaultRootWindow(dpy);
-	vi = glXChooseVisual(dpy, 0, att);
-	if (vi == NULL) {
-		printf("\n\tno appropriate visual found\n\n");
-		exit(EXIT_FAILURE);
-	} 
-	cmap = XCreateColormap(dpy, root, vi->visual, AllocNone);
-	swa.colormap = cmap;
-	swa.event_mask = ExposureMask | KeyPressMask | KeyReleaseMask |
-						StructureNotifyMask | SubstructureNotifyMask;
-	win = XCreateWindow(dpy, root, 0, 0, g.xres, g.yres, 0,
-							vi->depth, InputOutput, vi->visual,
-							CWColormap | CWEventMask, &swa);
-	set_title();
-	glc = glXCreateContext(dpy, vi, NULL, GL_TRUE);
-	glXMakeCurrent(dpy, win, glc);
-}
-*/
-
 void reshape_window(int width, int height)
 {
 	//window has been resized.
@@ -519,17 +452,14 @@ void reshape_window(int width, int height)
 
 void init(void)
 {
-	//printf("init()...\n");
-	//cube.setup(1);
-	//blender cube
+	//track
 	Object *buildModel(const char *mname);
 	track = buildModel("./kart/track.obj");
 	track->scale(3);
 	track->translate(-1.0, -2, 0);
 	track->rotate(0, 90, 0);
-	track->setColor(0.2,0.2,0.2);
-	
-	//blender kart
+	track->setColor(0.2,0.2,0.2);	
+	//mario
 	Object *buildModel(const char *mname);
 	kart = buildModel("./kart/kartuse.obj");
 	kart->scale(0.5);
@@ -582,19 +512,6 @@ void init_opengl(void)
 	 g.tex.xc[1] = 0.25;
 	 g.tex.yc[0] = 0.0;
 	 g.tex.yc[1] = 1.0;
-	//
-	//------------------------------------------------------------------------
-	//This code was added 2016-fall when stencil buffer was fixed.
-	//
-	// https://www.opengl.org/discussion_boards/showthread.php/
-	// 138452-stencil-buffer-works-on-one-machine-but-not-on-another
-	//
-	// Before you try using stencil buffer try this:
-	// Code :
-	// GLint stencilBits = 0;
-	// glGetIntegerv(GL_STENCIL_BITS, &amp;stencilBits);
-	// if (stencilBits < 1)
-	//    MessageBox(NULL,"no stencil buffer.\n","Stencil test", MB_OK);
 	GLint stencilBits = 0;
 	glGetIntegerv(GL_STENCIL_BITS, &stencilBits);
 	if (stencilBits < 1) {
@@ -631,34 +548,6 @@ Object *buildModel(const char *mname)
 		printf("ERROR: file **%s** not found.\n", mname);
 		return NULL;
 	}
-	//sample file structure
-	//================================================
-	/*
-	# Blender v2.69 (sub 0) OBJ File: ''
-	# www.blender.org
-	v 1.000000 -1.000000 -1.000000
-	v 0.227943 -0.227943 1.626465
-	v -0.227944 -0.227943 1.626465
-	v -1.000000 -1.000000 -1.000000
-	v 1.000000 1.000000 -0.999999
-	v 0.227943 0.227943 1.626465
-	v -0.227944 0.227943 1.626465
-	v -1.000000 1.000000 -1.000000
-	s off
-	f 1 2 4
-	f 5 8 6
-	f 1 5 2
-	f 2 6 7
-	f 3 7 8
-	f 5 1 8
-	f 5 6 2
-	f 8 7 6
-	f 3 2 7
-	f 4 3 8
-	f 2 3 4
-	f 1 4 8
-	*/
-	//================================================
 	//count all vertices
 	fseek(fpi, 0, SEEK_SET);	
 	while (fgets(line, 100, fpi) != NULL) {
@@ -776,7 +665,6 @@ int check_keys(XEvent *e)
 			shift = 0;
 		}
 	}
-	
 	return 0;
 }
 
@@ -950,7 +838,6 @@ void physics(void)
 }
 
 void drawShadow() {
-	//glPushMatrix();
 	glLoadIdentity();
 	glMatrixMode(GL_PROJECTION);
 	glPushMatrix();
@@ -958,7 +845,6 @@ void drawShadow() {
 	glOrtho(0, 1, 1, 0, 0, 1);
 	glDisable(GL_DEPTH_TEST);
 	//darkness of shadow is here.
-	//glColor4f(1.0f, 1.0f, 1.0f, 0.5f);
 	glColor4f(0.0f, 0.0f, 0.0f, 0.3f);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -972,7 +858,6 @@ void drawShadow() {
 	glEnable(GL_DEPTH_TEST);
 	glPopMatrix();
 	glMatrixMode(GL_MODELVIEW);
-	//glPopMatrix();
 }
 
 void renderShadows() {
@@ -1010,7 +895,6 @@ void renderShadows() {
 	glStencilOp(GL_KEEP, GL_DECR, GL_KEEP);
 	//----------------------------------------------------------------------
 	//render the shadow surfaces.
-	//cube.triShadowVolume();
 	track->triShadowVolume();
 	kart->triShadowVolume();
 	//----------------------------------------------------------------------
@@ -1035,7 +919,6 @@ void render(void)
 	Rect r;
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 	//
-	
 	glViewport(0, 0, g.xres, g.yres);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
@@ -1044,16 +927,6 @@ void render(void)
 	gluOrtho2D(0, g.xres, 0, g.yres);
 	glPushAttrib(GL_ENABLE_BIT);
 	glDisable(GL_LIGHTING);
-/*
-	float angle = (float)atan2(g.cameraDirection[2], g.cameraDirection[2]);
-	float xspot = angle / PI*2.0;
-	g.tex.xc[0] = xspot;
-	g.tex.xc[1] = xspot + 0.05;
-	if (g.tex.xc[1] > 1.0) {
-	    g.tex.xc[1] -= 1.0;
-	}
-*/
-	//glClear(GL_COLOR_BUFFER_BIT);
 	glColor3f(1.0, 1.0, 1.0);
 	glBindTexture(GL_TEXTURE_2D, g.tex.backTexture);
 	glBegin(GL_QUADS);
@@ -1064,7 +937,6 @@ void render(void)
 	glEnd();
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glClear(GL_DEPTH_BUFFER_BIT);
-
 	//
 	//3D mode
 	glEnable(GL_LIGHTING);
@@ -1079,18 +951,15 @@ void render(void)
 	VecMake(kart->pos[0] + kart->dir[0], kart->pos[1] + kart->dir[1], kart->pos[2] + kart->dir[2], g.spot);
 	g.spot[0]-= kart->leftRotate * 0.01;
 	g.spot[0]+= kart->rightRotate * 0.01;
-	
-	
+	//
 	gluLookAt(
 		g.cameraPosition[0], g.cameraPosition[1], g.cameraPosition[2],
 		g.spot[0], g.spot[1] + 0.5f, g.spot[2],
 		up[0], up[1], up[2]);
 	glLightfv(GL_LIGHT0, GL_POSITION, g.lightPosition);
 	//
-	//drawFloor();
-	//cube.draw();
 	track->draw();
-	bowser->draw();
+	//bowser->draw();
 	kart->draw();
 	renderShadows();
 	//
@@ -1102,8 +971,6 @@ void render(void)
 	gluOrtho2D(0, g.xres, 0, g.yres);
 	glPushAttrib(GL_ENABLE_BIT);
 	glDisable(GL_LIGHTING);
-	//glDisable(GL_DEPTH_TEST);
-	//glDisable(GL_CULL_FACE);
 	r.bot = g.yres - 20;
 	r.left = 10;
 	r.center = 0;
@@ -1114,20 +981,15 @@ void render(void)
 }
 
 void callControls() {
-	
-	
 	//exit game
 	if (g.keypress[XK_Escape]) {
 		g.done = 1;
 	}
-	
 	//check for stopped
 	if (kart->velocity == 0) {
 		kart->forward = false;
 		kart->reverse = false;
-	}
-	
-	
+	}	
 	//drive forward
 	if (g.keypress[XK_w]) {
 		kart->reverse = false;
@@ -1154,7 +1016,6 @@ void callControls() {
 			kart->velocity = 0;
 		}
 	}
-	
 	//turn left
 	if (g.keypress[XK_a]) {
 		if (kart->forward == true) {
@@ -1169,7 +1030,6 @@ void callControls() {
 		kart->rotate(0, -0.5, 0);
 		kart->leftRotate -= 0.5;
 	}
-	
 	//turn right
 	if (g.keypress[XK_d]) {
 		if (kart->forward == true) {
