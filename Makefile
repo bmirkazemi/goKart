@@ -1,8 +1,9 @@
-all: model3d
+all: vectorKart
 
-model3d: model3d.cpp
-	g++ model3d.cpp -Wall -Wextra -lX11 -lGL -lGLU -lm ./libggfonts.a -o model3d
+vectorKart: vectorKart.cpp
+	g++ vectorKart.cpp -Wall -Wextra -lX11 -lGL -lGLU -lm \
+	./libggfonts.a -o vectorKart
 
 clean:
-	rm -f model3d
+	rm -f vectorKart
 

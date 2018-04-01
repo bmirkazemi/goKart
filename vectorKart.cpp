@@ -112,7 +112,7 @@ public:
 	unlink(ppmname);
     }
 };
-Image img[1] = {"./kart/bg1.jpg"};
+Image img[1] = {"./assets/bg1.jpg"};
 
 class Texture {
     public:
@@ -390,21 +390,21 @@ void init(void)
 {
 	//track
 	Object *buildModel(const char *mname);
-	track = buildModel("./kart/track.obj");
+	track = buildModel("./assets/track.obj");
 	track->scale(3);
 	track->translate(-1.0, -2, 0);
 	track->rotate(0, 90, 0);
 	track->setColor(0.2,0.2,0.2);	
 	//mario
 	Object *buildModel(const char *mname);
-	kart = buildModel("./kart/kartuse.obj");
+	kart = buildModel("./mario/mkart.obj");
 	kart->scale(0.5);
 	kart->rotate(0, 180, 0);
 	kart->translate(-0.5, 0, 0);
 	kart->setColor(.8,0,.9);	
 	//bowser
 	Object *buildModel(const char *mname);
-	bowser = buildModel("./bowser/kk_kart.obj");
+	bowser = buildModel("./bowser/bkart.obj");
 	bowser->scale(0.5);
 	bowser->rotate(0, 180, 0);
 	bowser->translate(-0.5, 0, -3.0);
