@@ -144,7 +144,8 @@ public:
 		yres=480;
 		aspectRatio = (GLfloat)xres / (GLfloat)yres;
 		//light is up high, right a little, toward a little
-		VecMake(0.0, 2.0, -10.0, cameraPosition);
+		//VecMake(0.0, 2.0, -10.0, cameraPosition);
+		VecMake(0.0, 20.0, -1.0, cameraPosition);
 		VecMake(100.0f, 240.0f, 40.0f, lightPosition);
 		lightPosition[3] = 1.0f;
 	}
@@ -167,6 +168,7 @@ public:
 	Matrix m;
 	int nverts;
 	int nfaces;
+	float Hangle, Vangle;
 	Vec dir;
 	Vec pos, vel, rot;
 	Vec color;
@@ -180,6 +182,7 @@ public:
 		delete [] norm;
 	}
 	Object(int nv, int nf) {
+		Hangle = Vangle = 0;
 		forward = reverse = false;
 		leftRotate = rightRotate = 0;
 		velocity = 0;
@@ -193,9 +196,7 @@ public:
 		VecZero(rot);
 		VecMake(.9, .9, 0, color);
 		g.identity33(m);
-		dir[0] = 0.0 - pos[0];
-		dir[1] = 0.0 - pos[1];
-		dir[2] = 0.0 - pos[2];
+		VecMake(sin(Hangle), sin(Vangle), -cos(Hangle), dir);
 	}
 	void setColor(float r, float g, float b) {
 		VecMake(r, g, b, color);
@@ -660,13 +661,12 @@ void trans_vector(Matrix mat, const Vec in, Vec out)
 
 void physics(void)
 {
-	Vec camUpdate = {kart->pos[0], kart->pos[1] + 0.7f, kart->pos[2] + 2.0f};
+	Vec camUpdate = {kart->pos[0], kart->pos[1] + 1.0f, kart->pos[2] + 3.0f};
 	VecMake(camUpdate[0], camUpdate[1], camUpdate[2], g.cameraPosition);
 	
 	//apply gravity and physics to kart
 	kart->applyGravity();
-	kart->translate(-kart->leftRotate * 0.01 + 
-					kart->rightRotate * 0.01, 0, -kart->velocity);
+	//kart->translate(-kart->leftRotate * 0.01 + kart->rightRotate * 0.01, 0, -kart->velocity);
 	
 	bowser->applyGravity();
 	if(bowser->pos[1] <= track->pos[1]) {
@@ -791,16 +791,9 @@ void render(void)
 	glLoadIdentity();
 	//for documentation...
 	Vec up = {0,1,0};
-	kart->dir[0] = -kart->leftRotate * 0.05;
-	kart->dir[0] = kart->rightRotate * 0.01;
-	VecMake(kart->pos[0] + kart->dir[0], kart->pos[1] + kart->dir[1], 
-			kart->pos[2] + kart->dir[2], g.spot);
-	g.spot[0]-= kart->leftRotate * 0.01;
-	g.spot[0]+= kart->rightRotate * 0.01;
-	//
 	gluLookAt(
 		g.cameraPosition[0], g.cameraPosition[1], g.cameraPosition[2],
-		g.spot[0], g.spot[1] + 0.5f, g.spot[2],
+		kart->pos[0], kart->pos[1], kart->pos[2],
 		up[0], up[1], up[2]);
 	glLightfv(GL_LIGHT0, GL_POSITION, g.lightPosition);
 	//
@@ -832,63 +825,45 @@ void callControls() {
 	if (g.keypress[XK_Escape]) {
 		g.done = 1;
 	}
-	//check for stopped
-	if (kart->velocity == 0) {
-		kart->forward = false;
-		kart->reverse = false;
-	}	
+	
 	//drive forward
 	if (g.keypress[XK_w]) {
-		kart->reverse = false;
-		kart->forward = true;
-		kart->velocity += 0.001;
-		if (kart->velocity >= 1.0) {
-			kart->velocity = 1.0;
+		kart->vel[0] += 0.002;
+		kart->vel[2] += 0.002;
+		if (kart->vel[0] >= 0.3) {
+			kart->vel[0] = 0.3;
 		}
-	} else if (kart->reverse == false) {
-		kart->velocity -= 0.005;
-		if (kart->velocity <= 0) {
-			kart->velocity = 0;
+		if (kart->vel[2] >= 0.3) {
+			kart->vel[2] = 0.3;
 		}
+		kart->pos[0] += kart->dir[0] * kart->vel[0];
+		kart->pos[2] += kart->dir[2] * kart->vel[2];
+	} else {
+		kart->vel[0] -= 0.01;
+		kart->vel[2] -= 0.01;
+		if (kart->vel[0] <= 0) {
+			kart->vel[0] = 0;
+		}
+		if (kart->vel[2] <= 0) {
+			kart->vel[2] = 0;
+		}
+		kart->pos[0] += kart->dir[0] * kart->vel[0];
+		kart->pos[2] += kart->dir[2] * kart->vel[2];
 	}
 	
-	//drive reverse
-	if (g.keypress[XK_s]) {
-		kart->forward = false;
-		kart->reverse = true;
-		kart->velocity -= 0.001;
-	} else if (kart->forward == false) {
-		kart->velocity += 0.005;
-		if (kart->velocity >= 0) {
-			kart->velocity = 0;
-		}
-	}
 	//turn left
-	if (g.keypress[XK_Left]) {
-		if (kart->forward == true) {
-			if (kart->leftRotate < 10) {
-				kart->rotate(0, 0.5, 0);
-				kart->leftRotate += 0.5;
-			} else {
-				kart->leftRotate = 10;
-			}
-		}
-	} else if (kart->leftRotate > 0) {
-		kart->rotate(0, -0.5, 0);
-		kart->leftRotate -= 0.5;
+	if (g.keypress[XK_a]) {
+			kart->Hangle -= 0.02f;
+			kart->dir[0] = sin(kart->Hangle);
+			kart->dir[2] = -cos(kart->Hangle);
+			kart->rotate(0, 1.3, 0);
 	}
+	
 	//turn right
-	if (g.keypress[XK_Right]) {
-		if (kart->forward == true) {
-			if (kart->rightRotate < 10) {
-				kart->rotate(0, -0.5, 0);
-				kart->rightRotate += 0.5;
-			} else {
-				kart->rightRotate = 10;
-			}
-		}
-	} else if (kart->rightRotate > 0) {
-		kart->rotate(0, 0.5, 0);
-		kart->rightRotate -= 0.5;
-	}	
+	if (g.keypress[XK_d]) {
+			kart->Hangle += 0.02f;
+			kart->dir[0] = sin(kart->Hangle);
+			kart->dir[2] = -cos(kart->Hangle);
+			kart->rotate(0, -1.3, 0);
+	}
 }
