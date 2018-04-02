@@ -71,6 +71,7 @@ int check_keys(XEvent *e);
 void physics(void);
 void render(void);
 void callControls(void);
+void vecNormalize(Vec v);
 
 class Image {
 public:
@@ -170,7 +171,7 @@ public:
 	int nfaces;
 	float Hangle, Vangle;
 	Vec dir;
-	Vec pos, vel, rot;
+	Vec pos, vel, rot, lastPos, nextPos;
 	Vec color;
 	Vec a[1000][3];
 	Vec b[1000][3];
@@ -194,6 +195,8 @@ public:
 		VecZero(pos);
 		VecZero(vel);
 		VecZero(rot);
+		VecZero(lastPos);
+		VecZero(nextPos);
 		VecMake(.9, .9, 0, color);
 		g.identity33(m);
 		VecMake(sin(Hangle), sin(Vangle), -cos(Hangle), dir);
@@ -792,8 +795,9 @@ void render(void)
 	//for documentation...
 	Vec up = {0,1,0};
 	gluLookAt(
+		//kart->lastPos[0], kart->lastPos[1] + 2.0f, kart->lastPos[2] + 2.0f,
 		g.cameraPosition[0], g.cameraPosition[1], g.cameraPosition[2],
-		kart->pos[0], kart->pos[1], kart->pos[2],
+		kart->nextPos[0], kart->nextPos[1], kart->nextPos[2],
 		up[0], up[1], up[2]);
 	glLightfv(GL_LIGHT0, GL_POSITION, g.lightPosition);
 	//
@@ -844,7 +848,7 @@ void callControls() {
 		if (kart->vel[0] <= 0) {
 			kart->vel[0] = 0;
 		}
-		if (kart->vel[2] <= 0) {
+    if (kart->vel[2] <= 0) {
 			kart->vel[2] = 0;
 		}
 		kart->pos[0] += kart->dir[0] * kart->vel[0];
@@ -856,7 +860,7 @@ void callControls() {
 			kart->Hangle -= 0.02f;
 			kart->dir[0] = sin(kart->Hangle);
 			kart->dir[2] = -cos(kart->Hangle);
-			kart->rotate(0, 1.3, 0);
+			kart->rotate(0, 1.15, 0);
 	}
 	
 	//turn right
@@ -864,6 +868,30 @@ void callControls() {
 			kart->Hangle += 0.02f;
 			kart->dir[0] = sin(kart->Hangle);
 			kart->dir[2] = -cos(kart->Hangle);
-			kart->rotate(0, -1.3, 0);
+			kart->rotate(0, -1.15, 0);
 	}
+	
+	//getting last position for the camera
+	kart->nextPos[0] = kart->pos[0] + kart->dir[0];
+	kart->nextPos[1] = kart->pos[1] + kart->dir[1];
+	kart->nextPos[2] = kart->pos[2] + kart->dir[2];
+	
+	//kart->lastPos[0] = kart->pos[0] - kart->dir[0];
+	//kart->lastPos[1] = kart->pos[1] - kart->dir[1];
+	//kart->lastPos[2] = kart->pos[2] - kart->dir[2];
+	
+	g.cameraPosition[0] = kart->pos[0] - kart->dir[0];
+	g.cameraPosition[1] = kart->pos[1] - kart->dir[1] + ;
+	g.cameraPosition[2] = kart->pos[2] - kart->dir[2];
+	vecNormalize(kart->lastPos);
+}
+
+void vecNormalize(Vec v) {
+	Flt length = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
+	if ( length == 0.0) 
+	    return;
+	length = 1.0/sqrt(length);
+	v[0] *= length;
+	v[1] *= length;
+	v[2] *= length;
 }
