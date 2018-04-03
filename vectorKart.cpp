@@ -72,7 +72,7 @@ void physics(void);
 void render(void);
 void callControls(void);
 void vecNormalize(Vec v);
-
+void vecScale(Vec v, Flt scale);
 class Image {
 public:
     int width, height;
@@ -402,7 +402,7 @@ void init(void)
 	//mario
 	Object *buildModel(const char *mname);
 	kart = buildModel("./mario/mkart.obj");
-	kart->scale(0.5);
+	kart->scale(0.2);
 	kart->rotate(0, 180, 0);
 	kart->translate(-0.5, 0, 0);
 	kart->setColor(.8,0,.9);	
@@ -860,7 +860,7 @@ void callControls() {
 			kart->Hangle -= 0.02f;
 			kart->dir[0] = sin(kart->Hangle);
 			kart->dir[2] = -cos(kart->Hangle);
-			kart->rotate(0, 1.15, 0);
+			kart->rotate(0, 1.147, 0);
 	}
 	
 	//turn right
@@ -868,22 +868,22 @@ void callControls() {
 			kart->Hangle += 0.02f;
 			kart->dir[0] = sin(kart->Hangle);
 			kart->dir[2] = -cos(kart->Hangle);
-			kart->rotate(0, -1.15, 0);
+			kart->rotate(0, -1.147, 0);
 	}
 	
 	//getting last position for the camera
-	kart->nextPos[0] = kart->pos[0] + kart->dir[0];
+	kart->nextPos[0] = kart->pos[0] + kart->dir[0]; 
 	kart->nextPos[1] = kart->pos[1] + kart->dir[1];
 	kart->nextPos[2] = kart->pos[2] + kart->dir[2];
+
+	kart->lastPos[0] = kart->pos[0] - kart->dir[0];
+	kart->lastPos[1] = kart->pos[1] - kart->dir[1] + 0.5f;
+	kart->lastPos[2] = kart->pos[2] - kart->dir[2];
+
+	g.cameraPosition[0] = kart->lastPos[0];
+	g.cameraPosition[1] = kart->lastPos[1];
+	g.cameraPosition[2] = kart->lastPos[2];
 	
-	//kart->lastPos[0] = kart->pos[0] - kart->dir[0];
-	//kart->lastPos[1] = kart->pos[1] - kart->dir[1];
-	//kart->lastPos[2] = kart->pos[2] - kart->dir[2];
-	
-	g.cameraPosition[0] = kart->pos[0] - kart->dir[0];
-	g.cameraPosition[1] = kart->pos[1] - kart->dir[1] + ;
-	g.cameraPosition[2] = kart->pos[2] - kart->dir[2];
-	vecNormalize(kart->lastPos);
 }
 
 void vecNormalize(Vec v) {
@@ -894,4 +894,10 @@ void vecNormalize(Vec v) {
 	v[0] *= length;
 	v[1] *= length;
 	v[2] *= length;
+}
+
+void vecScale(Vec v, Flt scale) {
+	v[0] *= scale;
+	v[1] *= scale;
+	v[2] *= scale;
 }
