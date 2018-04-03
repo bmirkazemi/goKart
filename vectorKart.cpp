@@ -15,6 +15,7 @@
 #include <GL/glu.h>
 #include "fonts.h"
 #include <iostream>
+#include <time.h>
 using namespace std;
 
 typedef float Flt;
@@ -71,8 +72,37 @@ int check_keys(XEvent *e);
 void physics(void);
 void render(void);
 void callControls(void);
-void vecNormalize(Vec v);
 void vecScale(Vec v, Flt scale);
+void drawSmoke(void);
+void make_a_smoke(void);
+void smokephysics(void);
+
+const Vec upv = {0.0, 1.0, 0.0};
+const int MAX_SMOKES = 200000;                                                      
+                                                                                 
+class Smoke {                                                                    
+public:                                                                          
+    Vec pos;                                                                     
+    Vec vert[16];                                                                
+    Flt radius;                                                                  
+    int n;                                                                       
+    struct timespec tstart;                                                      
+    Flt maxtime;                                                                 
+    Flt alpha;                                                                   
+    Flt distance;                                                                
+    Smoke() {
+
+    }                                                                  
+};              
+
+//-----------------------------------------------------------------------------  
+//Setup timers                                                                   
+const double OOBILLION = 1.0 / 1e9;                                              
+extern struct timespec timeStart, timeCurrent;                                   
+extern double timeDiff(struct timespec *start, struct timespec *end);            
+extern void timeCopy(struct timespec *dest, struct timespec *source);            
+//-----------------------------------------------------------------------------
+
 class Image {
 public:
     int width, height;
@@ -135,6 +165,15 @@ public:
 	Vec cameraPosition;
 	Vec spot;
 	bool shadows;
+	Matrix m;                                                                    
+    int circling;                                                                
+    int sorting;                                                                 
+    int billboarding;    
+    struct timespec smokeStart, smokeTime;                                       
+    Smoke *smoke;                                                                
+    int nsmokes;                                                                 
+    bool wind;                                                                   
+    Flt windrate;         
 	Global() {
 		for (int i = 0; i < 65336; i++) {
 			keypress[i] = 0;
@@ -143,16 +182,22 @@ public:
 		gravity = 0.01;
 		xres=640;
 		yres=480;
-		aspectRatio = (GLfloat)xres / (GLfloat)yres;
-		//light is up high, right a little, toward a little
-		//VecMake(0.0, 2.0, -10.0, cameraPosition);
+		aspectRatio = (GLfloat)xres / (GLfloat)yres;     
 		VecMake(0.0, 20.0, -1.0, cameraPosition);
 		VecMake(100.0f, 240.0f, 40.0f, lightPosition);
 		lightPosition[3] = 1.0f;
+		clock_gettime(CLOCK_REALTIME, &smokeStart);                              
+        nsmokes = 0;                                                             
+        smoke = new Smoke[MAX_SMOKES];                                           
+        windrate = 0.05f; 	
 	}
 	void identity33(Matrix m) {
 		m[0][0] = m[1][1] = m[2][2] = 1.0f;
 		m[0][1] = m[0][2] = m[1][0] = m[1][2] = m[2][0] = m[2][1] = 0.0f;
+	}
+	~Global() {
+		if (smoke)
+			delete [] smoke;
 	}
 } g;
 
@@ -561,6 +606,46 @@ Object *buildModel(const char *mname)
 	return o;
 }
 
+void make_view_matrix(const Vec p1, const Vec p2, Matrix m)                      
+{                                                                                
+    //Line between p1 and p2 form a LOS Line-of-sight.                           
+    //A rotation matrix is built to transform objects to this LOS.               
+    //Diana Gruber  http://www.makegames.com/3Drotation/                         
+    m[0][0]=m[1][1]=m[2][2]=1.0f;                                                
+    m[0][1]=m[0][2]=m[1][0]=m[1][2]=m[2][0]=m[2][1]=0.0f;                        
+    Vec out = { p2[0]-p1[0], p2[1]-p1[1], p2[2]-p1[2] };                         
+    //                                                                           
+    Flt l1, len = out[0]*out[0] + out[1]*out[1] + out[2]*out[2];                 
+    if (len == 0.0f) {                                                           
+        VecMake(0.0f,0.0f,1.0f,out);                                          
+    } else {                                                                     
+        l1 = 1.0f / sqrtf(len);                                                  
+        out[0] *= l1;                                                            
+        out[1] *= l1;                                                            
+        out[2] *= l1;                                                            
+    }                                                                            
+    m[2][0] = out[0];                                                            
+    m[2][1] = out[1];                                                            
+    m[2][2] = out[2];                                                            
+    Vec up = { -out[1] * out[0], upv[1] - out[1] * out[1], -out[1] * out[2] };   
+    //                                                                           
+    len = up[0]*up[0] + up[1]*up[1] + up[2]*up[2];                               
+    if (len == 0.0f) {                                                           
+        VecMake(0.0f,0.0f,1.0f,up);                                           
+    }                                                                            
+    else {                                                                       
+        l1 = 1.0f / sqrtf(len);                                                  
+        up[0] *= l1;                                                             
+        up[1] *= l1;                                                             
+        up[2] *= l1;                                                             
+    }                                                                            
+    m[1][0] = up[0];                                                             
+    m[1][1] = up[1];                                                             
+    m[1][2] = up[2];                                                             
+    //make left vector.                                                          
+    VecCross(up, out, m[0]);                                                     
+}                       
+
 int check_keys(XEvent *e)
 {
 	//Was there input from the keyboard?
@@ -667,9 +752,8 @@ void physics(void)
 	Vec camUpdate = {kart->pos[0], kart->pos[1] + 1.0f, kart->pos[2] + 3.0f};
 	VecMake(camUpdate[0], camUpdate[1], camUpdate[2], g.cameraPosition);
 	
-	//apply gravity and physics to kart
+	//apply gravity to kart
 	kart->applyGravity();
-	//kart->translate(-kart->leftRotate * 0.01 + kart->rightRotate * 0.01, 0, -kart->velocity);
 	
 	bowser->applyGravity();
 	if(bowser->pos[1] <= track->pos[1]) {
@@ -683,6 +767,8 @@ void physics(void)
 	
 	//call keypress functions activated
 	callControls();
+	smokephysics();
+
 }
 
 void drawShadow() {
@@ -805,6 +891,7 @@ void render(void)
 	//bowser->draw();
 	kart->draw();
 	renderShadows();
+	drawSmoke();
 	//
 	//switch to 2D mode
 	//
@@ -886,18 +973,143 @@ void callControls() {
 	
 }
 
-void vecNormalize(Vec v) {
-	Flt length = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
-	if ( length == 0.0) 
-	    return;
-	length = 1.0/sqrt(length);
-	v[0] *= length;
-	v[1] *= length;
-	v[2] *= length;
-}
-
 void vecScale(Vec v, Flt scale) {
 	v[0] *= scale;
 	v[1] *= scale;
 	v[2] *= scale;
+}
+
+void drawSmoke()                                                                 
+{                                                                                
+    bool swapped;                                                                
+    for (int i = 0; i < g.nsmokes; i++) {                                        
+        g.smoke[i].distance = sqrt(pow((g.smoke[i].pos[0] - g.cameraPosition[0]), 2) + pow((g.smoke[i].pos[1] - g.cameraPosition[1]), 2) + pow((g.smoke[i].pos[2] - g.cameraPosition[2]), 2));
+    }                                                                            
+                                                                                 
+    if (g.sorting) {                                                             
+        for (int i = 0; i < g.nsmokes - 1; i++) {                                
+            swapped = false;                                                     
+            for (int j = 0; j < g.nsmokes - 1; j++) {                            
+                if (g.smoke[j].distance < g.smoke[j+1].distance) {               
+                    swap(g.smoke[j], g.smoke[j+1]);                              
+                    swapped = true;                                              
+                }                                                                
+            }                                                                    
+            if (swapped == false) {                                              
+                break;                                                           
+            }                                                                    
+        }                                                                        
+    }                                                                            
+    //                                                                           
+    glEnable(GL_BLEND);                                                          
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);                           
+    for (int i=0; i<g.nsmokes; i++) {                                            
+        glPushMatrix();                                                          
+        glTranslatef(g.smoke[i].pos[0],g.smoke[i].pos[1],g.smoke[i].pos[2]);     
+        if (g.billboarding) {                                                    
+            Vec v;                                                               
+            v[0] = g.smoke[i].pos[0] - g.cameraPosition[0];                           
+            v[1] = g.smoke[i].pos[1] - g.cameraPosition[1];                           
+            v[2] = g.smoke[i].pos[2] - g.cameraPosition[2];                           
+            Vec z = {0.0f, 0.0f, 0.0f};                                          
+            make_view_matrix(z, v, g.m);                                         
+                                                                                 
+            float mat[16];                                                       
+            mat[ 0] = g.m[0][0];                                                 
+            mat[ 1] = g.m[0][1];                                                 
+            mat[ 2] = g.m[0][2];                                                 
+            mat[ 4] = g.m[1][0];                                                 
+            mat[ 5] = g.m[1][1];                                                 
+            mat[ 6] = g.m[1][2];                                                 
+            mat[ 8] = g.m[2][0];                                                 
+            mat[ 9] = g.m[2][1];                                                 
+            mat[10] = g.m[2][2];                                                 
+            mat[ 3] = mat[ 7] = mat[11] = mat[12] = mat[13] = mat[14] = 0.0f;    
+            mat[15] = 1.0f;                                                      
+            glMultMatrixf(mat);                                                  
+        }                                                                        
+        glColor4ub(255, 0, 0, (unsigned char)g.smoke[i].alpha);                  
+        glBegin(GL_TRIANGLE_FAN);                                                
+        glNormal3f(0.0, 0.0, 1.0);                                               
+        for (int j=0; j<g.smoke[i].n; j++) {                                     
+            //each vertex of the smoke                                           
+            //glVertex3fv(g.smoke[i].vert[j]);                                   
+            VecNormalize(g.smoke[i].vert[j]);                                    
+            vecScale(g.smoke[i].vert[j], g.smoke[i].radius);                     
+            glVertex3fv(g.smoke[i].vert[j]);                                     
+        }                                                                        
+        glEnd();                                                                 
+        glPopMatrix();                                                           
+    }                                                                            
+    glDisable(GL_BLEND);                                                         
+}                               
+
+void make_a_smoke()                                                              
+{                                                                                
+    if (g.nsmokes < MAX_SMOKES) {                                                
+        Smoke *s = &g.smoke[g.nsmokes];                                          
+        s->pos[0] = rnd() * 5.0 - 2.5;                                           
+        s->pos[2] = rnd() * 5.0 - 2.5;                                           
+        s->pos[1] = rnd() * 0.1 + 0.1;                                           
+        s->radius = rnd() * 0.01 + 0.0001;                                           
+        s->n = rand() % 5 + 5;                                                   
+        Flt angle = 0.0;                                                         
+        Flt inc = (PI*2.0) / (Flt)s->n;                                          
+        for (int i=0; i<s->n; i++) {                                             
+            s->vert[i][0] = cos(angle) * s->radius;                              
+            s->vert[i][1] = sin(angle) * s->radius;                              
+            s->vert[i][2] = 0.0;                                                 
+            angle += inc;                                                        
+        }                                                                        
+        s->maxtime = 8.0;                                                        
+        s->alpha = 100.0;                                                        
+        clock_gettime(CLOCK_REALTIME, &s->tstart);                               
+        ++g.nsmokes;                                                             
+    } 
+}                                                                           
+
+void smokephysics() {
+  	clock_gettime(CLOCK_REALTIME, &g.smokeTime);                                 
+   	double d = timeDiff(&g.smokeStart, &g.smokeTime);                            
+    if (d > 0.05) {                                                              
+        //time to make another smoke particle
+        for (int i = 0; i < 100; i++) {                                   
+        	make_a_smoke();                                                          
+        }
+        timeCopy(&g.smokeStart, &g.smokeTime);                                   
+    }                                                                            
+    //move smoke particles                                                       
+    for (int i=0; i<g.nsmokes; i++) {                                            
+        //smoke rising                                                           
+        g.smoke[i].pos[1] += 0.015;                                              
+        g.smoke[i].pos[1] += ((g.smoke[i].pos[1]*0.24) * (rnd() * 0.075));       
+        //expand particle as it rises                                            
+        g.smoke[i].radius += g.smoke[i].pos[1]*0.002;                            
+        //wind might blow particle                                               
+        if (g.smoke[i].pos[1] > 10.0) {                                          
+            g.smoke[i].pos[0] -= rnd() * 0.1;                                    
+        }                                                                        
+        if (g.wind == true) {                                                    
+            g.smoke[i].pos[0] += g.windrate;                                     
+        }                                                                        
+    }                                                                            
+    //check for smoke out of time                                                
+    int i=0;                                                                     
+    while (i < g.nsmokes) {                                                      
+        struct timespec bt;                                                      
+        clock_gettime(CLOCK_REALTIME, &bt);                                      
+        double d = timeDiff(&g.smoke[i].tstart, &bt);                            
+        if (d > g.smoke[i].maxtime - 3.0) {                                      
+            g.smoke[i].alpha *= 0.95;                                            
+            if (g.smoke[i].alpha < 1.0)                                          
+                g.smoke[i].alpha = 1.0;                                          
+        }                                                                        
+        if (d > g.smoke[i].maxtime) {                                            
+            //delete this smoke                                                  
+            --g.nsmokes;                                                         
+            g.smoke[i] = g.smoke[g.nsmokes];                                     
+            continue;                                                            
+        }                                                                        
+        ++i;                                                                     
+    }                                                                                                          
 }
