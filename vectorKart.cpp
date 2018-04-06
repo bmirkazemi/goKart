@@ -907,6 +907,13 @@ void render(void)
 	ggprint8b(&r, 16, 0x00000000, "W -> forward");
 	ggprint8b(&r, 16, 0x00000000, "S -> backwards");
 	ggprint8b(&r, 16, 0x00000000, "Arrow Keys -> right/left");
+	ggprint8b(&r, 16, 0x00000000, "kart x: %f", kart->pos[0]);
+	ggprint8b(&r, 16, 0x00000000, "kart y: %f", kart->pos[1]);
+	ggprint8b(&r, 16, 0x00000000, "kart z: %f", kart->pos[2]);
+	ggprint8b(&r, 16, 0x00000000, "smoke[0] x: %f", g.smoke[0].pos[0]);
+	ggprint8b(&r, 16, 0x00000000, "smoke[0] y: %f", g.smoke[0].pos[1]);
+	ggprint8b(&r, 16, 0x00000000, "smoke[0] z: %f", g.smoke[0].pos[2]);
+
 	//
 	glPopAttrib();
 }
@@ -1048,10 +1055,10 @@ void make_a_smoke()
 {                                                                                
     if (g.nsmokes < MAX_SMOKES) {                                                
         Smoke *s = &g.smoke[g.nsmokes];                                          
-        s->pos[0] = rnd() * 5.0 - 2.5;                                           
-        s->pos[2] = rnd() * 5.0 - 2.5;                                           
-        s->pos[1] = rnd() * 0.1 + 0.1;                                           
-        s->radius = rnd() * 0.01 + 0.0001;                                           
+        s->pos[0] = kart->pos[2];                                           
+        s->pos[2] = kart->pos[0];                                           
+        s->pos[1] = kart->pos[1];                                           
+        s->radius = 0.01;                                           
         s->n = rand() % 5 + 5;                                                   
         Flt angle = 0.0;                                                         
         Flt inc = (PI*2.0) / (Flt)s->n;                                          
@@ -1080,18 +1087,18 @@ void smokephysics() {
     }                                                                            
     //move smoke particles                                                       
     for (int i=0; i<g.nsmokes; i++) {                                            
-        //smoke rising                                                           
-        g.smoke[i].pos[1] += 0.015;                                              
-        g.smoke[i].pos[1] += ((g.smoke[i].pos[1]*0.24) * (rnd() * 0.075));       
-        //expand particle as it rises                                            
-        g.smoke[i].radius += g.smoke[i].pos[1]*0.002;                            
-        //wind might blow particle                                               
-        if (g.smoke[i].pos[1] > 10.0) {                                          
-            g.smoke[i].pos[0] -= rnd() * 0.1;                                    
-        }                                                                        
-        if (g.wind == true) {                                                    
-            g.smoke[i].pos[0] += g.windrate;                                     
-        }                                                                        
+        //smoke rising
+        g.smoke[i].pos[1] += 0.015;
+        g.smoke[i].pos[1] += ((g.smoke[i].pos[1]*0.24) * (rnd() * 0.075));
+        //expand particle as it rises
+       // g.smoke[i].radius += g.smoke[i].pos[1]*0.002;
+        //wind might blow particle
+        //if (g.smoke[i].pos[1] > 10.0) {
+        //    g.smoke[i].pos[0] -= rnd() * 0.1;
+        //}                    
+        //if (g.wind == true) {                                                    
+        //    g.smoke[i].pos[0] += g.windrate;                                     
+        //}                                                                        
     }                                                                            
     //check for smoke out of time                                                
     int i=0;                                                                     
@@ -1109,7 +1116,7 @@ void smokephysics() {
             --g.nsmokes;                                                         
             g.smoke[i] = g.smoke[g.nsmokes];                                     
             continue;                                                            
-        }                                                                        
-        ++i;                                                                     
+        }
+        ++i;
     }                                                                                                          
 }
