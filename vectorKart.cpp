@@ -891,7 +891,7 @@ void render(void)
 	//bowser->draw();
 	kart->draw();
 	renderShadows();
-	drawSmoke();
+	//drawSmoke();
 	//
 	//switch to 2D mode
 	//
