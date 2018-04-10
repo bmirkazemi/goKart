@@ -451,7 +451,7 @@ void init(void)
     track->setColor(0.2,0.2,0.2);
     //mario
     Object *buildModel(const char *mname);
-    kart = buildModel("./mario/mkart.obj");
+    kart = buildModel("./mario/karttex.obj");
     kart->scale(0.2);
     kart->rotate(0, 180, 0);
     kart->translate(-0.5, 0, 0);
@@ -528,8 +528,10 @@ Object *buildModel(const char *mname)
 {
     char line[200];
     Vec *vert=NULL;  //vertices in list
+    Vec *verttc=NULL;
     iVec *face=NULL; //3 indicies per face
-    int nv=0, nf=0;
+    iVec *text=NULL; //textures mapped to faces
+    int nv=0, nf=0, nt=0;
     printf("void buildModel(%s)...\n",mname);
     //Model exported from Blender. Assume an obj file.
     FILE *fpi = fopen(mname,"r");
@@ -549,16 +551,31 @@ Object *buildModel(const char *mname)
 	exit(EXIT_FAILURE);
     }
     printf("n verts: %i\n", nv);
+    //cout all texture vertices
+    fseek(fpi, 0, SEEK_SET);
+    while (fgets(line, 100, fpi) != NULL) {
+	if (line[0] == 'v' && line[1] == 't')
+	    nt++;
+    }
+    verttc = new Vec[nt];
+    if (!verttc) {
+	printf("ERROR: out of mem (vert)\n");
+	exit(EXIT_FAILURE);
+    }
+    printf("n verttc: %i\n", nt);
     //count all faces
     int iface[4];
+    int itext[4];
     fseek(fpi, 0, SEEK_SET);
     while (fgets(line, 100, fpi) != NULL) {
 	if (line[0] == 'f' && line[1] == ' ') {
-	    sscanf(line+1,"%i %i %i", &iface[0], &iface[1], &iface[2]);
+	    sscanf(line+1,"%i/%i %i/%i %i/%i", &iface[0], &itext[0], &iface[1], &itext[1], &iface[2], &itext[2]);
+	    nt++;
 	    nf++;
 	}
     }
     face = new iVec[nf];
+    text = new iVec[nt];
     if (!face) {
 	printf("ERROR: out of mem (face)\n");
 	exit(EXIT_FAILURE);
@@ -576,6 +593,7 @@ Object *buildModel(const char *mname)
     //second pass, read all faces
     int comment=0;
     nf=0;
+    nt=0;
     fseek(fpi, 0, SEEK_SET);
     while (fgets(line, 100, fpi) != NULL) {
 	if (line[0] == '/' && line[1] == '*') {
@@ -588,10 +606,14 @@ Object *buildModel(const char *mname)
 	if (comment)
 	    continue;
 	if (line[0] == 'f' && line[1] == ' ') {
-	    sscanf(line+1,"%i %i %i", &iface[0], &iface[1], &iface[2]);
+	    sscanf(line+1,"%i/%i %i/%i %i/%i", &iface[0], &itext[0], &iface[1], &itext[1], &iface[2], &itext[2]);
 	    face[nf][0] = iface[1]-1;
 	    face[nf][1] = iface[0]-1;
 	    face[nf][2] = iface[2]-1;
+	    text[nt][0] = itext[1]-1;
+	    text[nt][1] = itext[0]-1;
+	    text[nt][2] = itext[2]-1;
+	    nt++;
 	    nf++;
 	}
     }
@@ -955,9 +977,9 @@ void render(void)
     glLightfv(GL_LIGHT0, GL_POSITION, g.lightPosition);
     //
     track->draw();
-    //bowser->draw();
+    bowser->draw();
     kart->draw();
-    renderShadows();
+    //renderShadows();
     //drawSmoke();
     //
     //switch to 2D mode
