@@ -148,7 +148,7 @@ class Image {
 	    unlink(ppmname);
 	}
 };
-Image img[1] = {"./assets/bg1.jpg"};
+Image img[2] = {"./assets/bg1.jpg", "./assets/road.jpg"};
 
 class Texture {
     public:
@@ -286,6 +286,7 @@ class Object {
 	    Flt VecNormalize(Vec vec);
 	    VecNormalize(norm);
 	}
+
 	void draw() {
 	    //build our own rotation matrix for rotating the shadow polys.
 	    g.identity33(m);
@@ -444,7 +445,7 @@ void init(void)
 {
     //track
     Object *buildModel(const char *mname);
-    track = buildModel("./assets/track.obj");
+    track = buildModel("./assets/tracktext.obj");
     track->scale(3);
     track->translate(-1.0, -2, 0);
     track->rotate(0, 90, 0);
@@ -501,6 +502,19 @@ void init_opengl(void)
     g.tex.xc[1] = 0.25;
     g.tex.yc[0] = 0.0;
     g.tex.yc[1] = 1.0;
+
+//    glGenTextures(1, &road.backTexture);
+//    int wRoad = road.backImage->width;
+//    int hRoad = road.backImage->height;
+//    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+ //   glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+/*    glTexImage2D(GL_TEXTURE_2D, 0, 3, wRoad, hRoad, 0,
+	    GL_RGB, GL_UNSIGNED_BYTE, road.backImage->data);
+    road.xc[0] = 0.0;
+    road.xc[1] = 1.0;
+    road.yc[0] = 0.0;
+    road.yc[1] = 0.1;
+*/
     GLint stencilBits = 0;
     glGetIntegerv(GL_STENCIL_BITS, &stencilBits);
     if (stencilBits < 1) {
@@ -531,7 +545,7 @@ Object *buildModel(const char *mname)
     Vec *verttc=NULL;
     iVec *face=NULL; //3 indicies per face
     iVec *text=NULL; //textures mapped to faces
-    int nv=0, nf=0, nt=0;
+    int nv=0, nf=0, ntf=0, nt=0;
     printf("void buildModel(%s)...\n",mname);
     //Model exported from Blender. Assume an obj file.
     FILE *fpi = fopen(mname,"r");
@@ -551,6 +565,7 @@ Object *buildModel(const char *mname)
 	exit(EXIT_FAILURE);
     }
     printf("n verts: %i\n", nv);
+
     //cout all texture vertices
     fseek(fpi, 0, SEEK_SET);
     while (fgets(line, 100, fpi) != NULL) {
@@ -563,6 +578,7 @@ Object *buildModel(const char *mname)
 	exit(EXIT_FAILURE);
     }
     printf("n verttc: %i\n", nt);
+
     //count all faces
     int iface[4];
     int itext[4];
@@ -590,10 +606,20 @@ Object *buildModel(const char *mname)
 	    nv++;
 	}
     }
-    //second pass, read all faces
+    //second pass, read all vertext texture points
+    nt=0;
+    fseek(fpi, 0, SEEK_SET);
+    while (fgets(line, 100, fpi) != NULL) {
+	if (line[0] == 'v' && line[1] == 't') {
+	    cout << line << endl;
+	    sscanf(line+2, "%f %f", &verttc[nt][0], &verttc[nt][1]);
+	    nt++;
+	}
+    }
+    //third pass, read all faces/textmapspoints
     int comment=0;
     nf=0;
-    nt=0;
+    ntf=0;
     fseek(fpi, 0, SEEK_SET);
     while (fgets(line, 100, fpi) != NULL) {
 	if (line[0] == '/' && line[1] == '*') {
@@ -610,15 +636,16 @@ Object *buildModel(const char *mname)
 	    face[nf][0] = iface[1]-1;
 	    face[nf][1] = iface[0]-1;
 	    face[nf][2] = iface[2]-1;
-	    text[nt][0] = itext[1]-1;
-	    text[nt][1] = itext[0]-1;
-	    text[nt][2] = itext[2]-1;
-	    nt++;
+	    text[ntf][0] = itext[1]-1;
+	    text[ntf][1] = itext[0]-1;
+	    text[ntf][2] = itext[2]-1;
+	    ntf++;
 	    nf++;
 	}
     }
     fclose(fpi);
-    printf("nverts: %i   nfaces: %i\n", nv, nf);
+    printf("nverts: %i   nfaces: %i    nt: %i\n", nv, nf, nt);
+
     Object *o = new Object(nv, nf);
     for (int i=0; i<nv; i++) {
 	o->setVert(vert[i], i);
