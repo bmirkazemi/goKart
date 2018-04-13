@@ -152,8 +152,8 @@ Image img[2] = {"./assets/bg1.jpg", "./assets/road.jpg"};
 
 class Texture {
     public:
-	Image *backImage;
-	GLuint backTexture;
+	Image *backImage, *roadImage;
+	GLuint backTexture, roadTexture;
 	float xc[2];
 	float yc[2];
 };
@@ -446,10 +446,10 @@ void init(void)
     //track
     Object *buildModel(const char *mname);
     track = buildModel("./assets/tracktext.obj");
-    track->scale(3);
-    track->translate(-1.0, -2, 0);
-    track->rotate(0, 90, 0);
-    track->setColor(0.2,0.2,0.2);
+   // track->scale(3);
+   // track->translate(-1.0, -2, 0);
+   // track->rotate(0, 90, 0);
+   // track->setColor(0.2,0.2,0.2);
     //mario
     Object *buildModel(const char *mname);
     kart = buildModel("./mario/karttex.obj");
@@ -488,8 +488,8 @@ void init_opengl(void)
     glEnable(GL_TEXTURE_2D);
     initialize_fonts();
     //init_textures();
+    
     g.tex.backImage = &img[0];
-    //create opengl texture elements
     glGenTextures(1, &g.tex.backTexture);
     int w = g.tex.backImage->width;
     int h = g.tex.backImage->height;
@@ -503,18 +503,20 @@ void init_opengl(void)
     g.tex.yc[0] = 0.0;
     g.tex.yc[1] = 1.0;
 
-//    glGenTextures(1, &road.backTexture);
-//    int wRoad = road.backImage->width;
-//    int hRoad = road.backImage->height;
-//    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
- //   glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
-/*    glTexImage2D(GL_TEXTURE_2D, 0, 3, wRoad, hRoad, 0,
-	    GL_RGB, GL_UNSIGNED_BYTE, road.backImage->data);
-    road.xc[0] = 0.0;
-    road.xc[1] = 1.0;
-    road.yc[0] = 0.0;
-    road.yc[1] = 0.1;
-*/
+	g.tex.roadImage = &img[1];
+    glGenTextures(1, &g.tex.roadTexture);
+    int wRoad = g.tex.roadImage->width;
+    int hRoad = g.tex.roadImage->height;
+    glBindTexture(GL_TEXTURE_2D, g.tex.roadTexture);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, 3, wRoad, hRoad, 0,
+	    GL_RGB, GL_UNSIGNED_BYTE, g.tex.roadImage->data);
+	g.tex.xc[0] = 0.0;
+    g.tex.xc[1] = 1.0;
+    g.tex.yc[0] = 0.0;
+    g.tex.yc[1] = 1.0;
+	
     GLint stencilBits = 0;
     glGetIntegerv(GL_STENCIL_BITS, &stencilBits);
     if (stencilBits < 1) {
@@ -978,6 +980,9 @@ void render(void)
     glPushAttrib(GL_ENABLE_BIT);
     glDisable(GL_LIGHTING);
     glColor3f(1.0, 1.0, 1.0);
+    
+    //
+    
     glBindTexture(GL_TEXTURE_2D, g.tex.backTexture);
     glBegin(GL_QUADS);
     glTexCoord2f(g.tex.xc[0], g.tex.yc[1]); glVertex2i(0, 0);
@@ -988,6 +993,27 @@ void render(void)
     glBindTexture(GL_TEXTURE_2D, 0);
     glClear(GL_DEPTH_BUFFER_BIT);
     //
+    
+    
+    glBindTexture(GL_TEXTURE_2D, g.tex.roadTexture);
+	glBegin(GL_QUADS);
+	
+	glTexCoord2f(g.tex.xc[0], g.tex.yc[1]); glVertex3f(track->vert[3][0], track->vert[3][1], track->vert[3][2]);
+    glTexCoord2f(g.tex.xc[0], g.tex.yc[0]); glVertex3f(track->vert[2][0], track->vert[2][1], track->vert[2][2]);
+    glTexCoord2f(g.tex.xc[1], g.tex.yc[0]); glVertex3f(track->vert[0][0], track->vert[0][1], track->vert[0][2]);
+    glTexCoord2f(g.tex.xc[1], g.tex.yc[1]); glVertex3f(track->vert[1][0], track->vert[1][1], track->vert[1][2]);
+	
+	glEnd();
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glClear(GL_DEPTH_BUFFER_BIT);
+	
+	
+  //  
+    
+    
+    
+    
+    
     //3D mode
     glEnable(GL_LIGHTING);
     glMatrixMode(GL_PROJECTION); glLoadIdentity();
@@ -1023,12 +1049,17 @@ void render(void)
     ggprint8b(&r, 16, 0x00000000, "W -> forward");
     ggprint8b(&r, 16, 0x00000000, "S -> backwards");
     ggprint8b(&r, 16, 0x00000000, "Arrow Keys -> right/left");
-    ggprint8b(&r, 16, 0x00000000, "kart x: %f", kart->pos[0]);
-    ggprint8b(&r, 16, 0x00000000, "kart y: %f", kart->pos[1]);
-    ggprint8b(&r, 16, 0x00000000, "kart z: %f", kart->pos[2]);
-    ggprint8b(&r, 16, 0x00000000, "smoke[0] x: %f", g.smoke[0].pos[0]);
-    ggprint8b(&r, 16, 0x00000000, "smoke[0] y: %f", g.smoke[0].pos[1]);
-    ggprint8b(&r, 16, 0x00000000, "smoke[0] z: %f", g.smoke[0].pos[2]);
+    ggprint8b(&r, 16, 0xFFFFFFFF, "kart x: %f", kart->pos[0]);
+    ggprint8b(&r, 16, 0xFFFFFFFF, "kart y: %f", kart->pos[1]);
+    ggprint8b(&r, 16, 0xFFFFFFFF, "kart z: %f", kart->pos[2]);
+    //ggprint8b(&r, 16, 0x00000000, "smoke[0] x: %f", g.smoke[0].pos[0]);
+    //ggprint8b(&r, 16, 0x00000000, "smoke[0] y: %f", g.smoke[0].pos[1]);
+    //ggprint8b(&r, 16, 0x00000000, "smoke[0] z: %f", g.smoke[0].pos[2]);
+    for (int i = 0; i < track->nverts; i++) {
+		ggprint8b(&r, 16, 0xFFFFFFFFF, "track vert %i = %f %f %f", i, track->vert[i][0], track->vert[i][1], track->vert[i][2]);
+	}
+    
+    
 
     //
     glPopAttrib();
