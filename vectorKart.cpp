@@ -161,6 +161,7 @@ class Texture {
 class Global {
     public:
 	int done;
+	int renderCount;
 	char keypress[65536];
 	Flt gravity;
 	int xres, yres;
@@ -171,18 +172,22 @@ class Global {
 	Vec spot;
 	bool shadows;
 	Matrix m;
+	int fps;
 	int circling;
 	int sorting;
 	int billboarding;
 	struct timespec smokeStart, smokeTime;
+	struct timespec renderStart, renderTime;
 	Smoke *smoke;
 	int nsmokes;
 	bool wind;
 	Flt windrate;
 	Global() {
+		fps = 0;
 	    for (int i = 0; i < 65336; i++) {
 		keypress[i] = 0;
 	    }
+	    renderCount = 0;
 	    shadows = true;
 	    gravity = 0.01;
 	    xres=640;
@@ -192,6 +197,7 @@ class Global {
 	    VecMake(100.0f, 240.0f, 40.0f, lightPosition);
 	    lightPosition[3] = 1.0f;
 	    clock_gettime(CLOCK_REALTIME, &smokeStart);
+	    
 	    nsmokes = 0;
 	    smoke = new Smoke[MAX_SMOKES];
 	    windrate = 0.05f;
@@ -364,17 +370,26 @@ int main(void)
     initXWindows();
     init_opengl();
     init();
+    clock_gettime(CLOCK_REALTIME, &g.renderStart);
     while (g.done == 0) {
-	while (XPending(dpy)) {
-	    XEvent e;
-	    XNextEvent(dpy, &e);
-	    check_resize(&e);
-	    check_keys(&e);
+		while (XPending(dpy)) {
+			XEvent e;
+			XNextEvent(dpy, &e);
+			check_resize(&e);
+			check_keys(&e);
+		}
+		clock_gettime(CLOCK_REALTIME, &g.renderTime);
+		double d = timeDiff(&g.renderStart, &g.renderTime);
+		if (d >= 1.0) {
+			g.fps = g.renderCount;
+			g.renderCount = 0;
+			timeCopy(&g.renderStart, &g.renderTime);
+		}
+		g.renderCount++;
+		physics();
+		render();
+		glXSwapBuffers(dpy, win);
 	}
-	physics();
-	render();
-	glXSwapBuffers(dpy, win);
-    }
     cleanupXWindows();
     cleanup_fonts();
     return 0;
@@ -454,6 +469,7 @@ void reshape_window(int width, int height)
 
 void init(void)
 {
+	system("export __GL_SYNC_TO_VBLANK=0");
     //track
     Object *buildModel(const char *mname);
     track = buildModel("./assets/tracktext.obj");
@@ -896,7 +912,7 @@ void physics(void)
 
     //call keypress functions activated
     callControls();
-    smokephysics();
+    //smokephysics();
 
 }
 
@@ -979,6 +995,7 @@ void renderShadows() {
 
 void render(void)
 {
+
     Rect r;
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
     //
@@ -1067,12 +1084,15 @@ void render(void)
     ggprint8b(&r, 16, 0xFFFFFFFF, "kart x: %f", kart->pos[0]);
     ggprint8b(&r, 16, 0xFFFFFFFF, "kart y: %f", kart->pos[1]);
     ggprint8b(&r, 16, 0xFFFFFFFF, "kart z: %f", kart->pos[2]);
+    
+    //fps counter
+   
+    ggprint8b(&r, 16, 0xFFFFFFFF, "fps: %i", g.fps);
+   	
+    
     //ggprint8b(&r, 16, 0x00000000, "smoke[0] x: %f", g.smoke[0].pos[0]);
     //ggprint8b(&r, 16, 0x00000000, "smoke[0] y: %f", g.smoke[0].pos[1]);
     //ggprint8b(&r, 16, 0x00000000, "smoke[0] z: %f", g.smoke[0].pos[2]);
-    for (int i = 0; i < track->nverts; i++) {
-		ggprint8b(&r, 16, 0xFFFFFFFFF, "track vert %i = %f %f %f", i, track->vert[i][0], track->vert[i][1], track->vert[i][2]);
-	}
     
     
 
