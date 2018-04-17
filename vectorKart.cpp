@@ -457,10 +457,10 @@ void init(void)
     //track
     Object *buildModel(const char *mname);
     track = buildModel("./assets/tracktext.obj");
-   // track->scale(3);
-   // track->translate(-1.0, -2, 0);
-   // track->rotate(0, 90, 0);
-   // track->setColor(0.2,0.2,0.2);
+    track->scale(3);
+    track->translate(-1.0, -2, 0);
+    track->rotate(0, 90, 0);
+    track->setColor(0.2,0.2,0.2);
     //mario
     Object *buildModel(const char *mname);
     kart = buildModel("./mario/karttex.obj");
@@ -992,45 +992,20 @@ void render(void)
     glDisable(GL_LIGHTING);
     glColor3f(1.0, 1.0, 1.0);
     
-    //
-    glPushMatrix();
-    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE,GL_MODULATE);
+    //draw background (2D Mode)
     glBindTexture(GL_TEXTURE_2D, g.tex.backTexture);
-    glBegin(GL_QUADS);
-    //glTexCoord2f(g.tex.xc[0], g.tex.yc[1]); glVertex2i(0, 0);
-    //glTexCoord2f(g.tex.xc[0], g.tex.yc[0]); glVertex2i(0, g.yres);
-    //glTexCoord2f(g.tex.xc[1], g.tex.yc[0]); glVertex2i(g.xres, g.yres);
-    //glTexCoord2f(g.tex.xc[1], g.tex.yc[1]); glVertex2i(g.xres, 0);
-    glTexCoord2f(g.tex.xc[0], g.tex.yc[0]); glVertex3f(track->vert[2][0], track->vert[2][1], track->vert[2][2]);
-    glTexCoord2f(g.tex.xc[0], g.tex.yc[1]); glVertex3f(track->vert[3][0], track->vert[3][1], track->vert[3][2]);
-    glTexCoord2f(g.tex.xc[1], g.tex.yc[1]); glVertex3f(track->vert[1][0], track->vert[1][1], track->vert[1][2]);
-    glTexCoord2f(g.tex.xc[1], g.tex.yc[0]); glVertex3f(track->vert[0][0], track->vert[0][1], track->vert[0][2]);
-    glEnd();
-    glPopMatrix();
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glClear(GL_DEPTH_BUFFER_BIT);
-    //
-    
-   /* 
-    glBindTexture(GL_TEXTURE_2D, g.tex.roadTexture);
 	glBegin(GL_QUADS);
-	
-	glTexCoord2f(g.tex.xc[0], g.tex.yc[1]); glVertex3f(track->vert[3][0], track->vert[3][1], track->vert[3][2]);
-    glTexCoord2f(g.tex.xc[0], g.tex.yc[0]); glVertex3f(track->vert[2][0], track->vert[2][1], track->vert[2][2]);
-    glTexCoord2f(g.tex.xc[1], g.tex.yc[0]); glVertex3f(track->vert[0][0], track->vert[0][1], track->vert[0][2]);
-    glTexCoord2f(g.tex.xc[1], g.tex.yc[1]); glVertex3f(track->vert[1][0], track->vert[1][1], track->vert[1][2]);
-	
+	glTexCoord2f(g.tex.xc[0], g.tex.yc[1]); glVertex2i(0, 0);
+    glTexCoord2f(g.tex.xc[0], g.tex.yc[0]); glVertex2i(0, g.yres);
+    glTexCoord2f(g.tex.xc[1], g.tex.yc[0]); glVertex2i(g.xres, g.yres);
+	glTexCoord2f(g.tex.xc[1], g.tex.yc[1]); glVertex2i(g.xres, 0);
 	glEnd();
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glClear(GL_DEPTH_BUFFER_BIT);
-   */
 	
-  //  
-    
-    
-    
-    
-    
+	
+	
+	
     //3D mode
     glEnable(GL_LIGHTING);
     glMatrixMode(GL_PROJECTION); glLoadIdentity();
@@ -1042,12 +1017,34 @@ void render(void)
     gluLookAt(
 	    //kart->lastPos[0], kart->lastPos[1] + 2.0f, kart->lastPos[2] + 2.0f,
 	    g.cameraPosition[0], g.cameraPosition[1], g.cameraPosition[2],
-	    track->vert[1][0], track->vert[1][1], track->vert[1][2],
-	    //kart->nextPos[0], kart->nextPos[1], kart->nextPos[2],
+	    //track->vert[1][0], track->vert[1][1], track->vert[1][2],
+	    kart->nextPos[0], kart->nextPos[1], kart->nextPos[2],
 	    up[0], up[1], up[2]);
     glLightfv(GL_LIGHT0, GL_POSITION, g.lightPosition);
     //
-    //track->draw();
+    
+    //draw track texture
+    //track->scale(3);
+    //track->translate(-1.0, -2, 0);
+    //track->rotate(0, 90, 0);
+    //track->setColor(0.2,0.2,0.2);
+    
+    glPushMatrix();
+    glRotatef(90, 0, 1, 0);
+    glTranslated(-1.0, -2, 0);
+    glScalef(3, 3, 3);
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE,GL_MODULATE);
+    glBindTexture(GL_TEXTURE_2D, g.tex.roadTexture);
+    glBegin(GL_QUADS);
+    glTexCoord2f(g.tex.xc[0], g.tex.yc[0]); glVertex3f(track->vert[0][0], track->vert[0][1], track->vert[0][2]);
+	glTexCoord2f(g.tex.xc[1], g.tex.yc[0]); glVertex3f(track->vert[2][0], track->vert[2][1], track->vert[2][2]);
+    glTexCoord2f(g.tex.xc[1], g.tex.yc[1]); glVertex3f(track->vert[3][0], track->vert[3][1], track->vert[3][2]);
+    glTexCoord2f(g.tex.xc[0], g.tex.yc[1]); glVertex3f(track->vert[1][0], track->vert[1][1], track->vert[1][2]);
+    glEnd();
+    glPopMatrix();
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    //
     bowser->draw();
     kart->draw();
     //renderShadows();
