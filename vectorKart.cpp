@@ -13,6 +13,7 @@
 #include <GL/gl.h>
 #include <GL/glx.h>
 #include <GL/glu.h>
+#include <GL/glxext.h>
 #include "fonts.h"
 #include <iostream>
 #include <time.h>
@@ -197,7 +198,6 @@ class Global {
 	    VecMake(100.0f, 240.0f, 40.0f, lightPosition);
 	    lightPosition[3] = 1.0f;
 	    clock_gettime(CLOCK_REALTIME, &smokeStart);
-	    
 	    nsmokes = 0;
 	    smoke = new Smoke[MAX_SMOKES];
 	    windrate = 0.05f;
@@ -220,11 +220,15 @@ class Object {
 	float rightRotate;
 	float velocity;
 	Vec *vert;
+	Vec *vertText;
 	Vec *norm;
 	iVec *face;
+	iVec *faceText;
 	Matrix m;
 	int nverts;
+	int nvertText;
 	int nfaces;
+	int nfaceText;
 	float Hangle, Vangle;
 	Vec dir;
 	Vec pos, vel, rot, lastPos, nextPos;
@@ -235,19 +239,25 @@ class Object {
     public:
 	~Object() {
 	    delete [] vert;
+	    delete [] vertText;
 	    delete [] face;
+	    delete [] faceText;
 	    delete [] norm;
 	}
-	Object(int nv, int nf) {
+	Object(int nv, int nf, int nt, int nft) {
 	    Hangle = Vangle = 0;
 	    forward = reverse = false;
 	    leftRotate = rightRotate = 0;
 	    velocity = 0;
 	    vert = new Vec[nv];
+	    vertText = new Vec[nt];
 	    face = new iVec[nf];
+	    faceText = new iVec[nft];
 	    norm = new Vec[nf];
 	    nverts = nv;
 	    nfaces = nf;
+	    nvertText = nt;
+	    nfaceText = nft;
 	    VecZero(pos);
 	    VecZero(vel);
 	    VecZero(rot);
@@ -263,8 +273,14 @@ class Object {
 	void setVert(Vec v, int i) {
 	    VecMake(v[0], v[1], v[2], vert[i]);
 	}
+	void setVertText(Vec v, int i) {
+		VecMake(v[0], v[1], 0, vertText[i]);
+	}
 	void setFace(iVec f, int i) {
 	    VecMake(f[0], f[2], f[1], face[i]);
+	}
+	void setFaceText(iVec f, int i) {
+		VecMake(f[0], f[2], f[1], faceText[i]);
 	}
 	void applyGravity() {
 	    pos[1] -= g.gravity;
@@ -340,6 +356,67 @@ class Object {
 		glPopMatrix();
 	    }
 	}
+	void drawTexture() {
+		cout << nfaceText << "NFACE" << endl;
+		for (int i = 0; i < nfaceText; i++) {
+			glPushMatrix();
+			glRotatef(90, 0, 1, 0);
+			glTranslated(-1.0, -2, 0);
+			glScalef(3, 3, 3);
+			glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE,GL_MODULATE);
+			glBindTexture(GL_TEXTURE_2D, g.tex.roadTexture);
+			glBegin(GL_TRIANGLES);
+			glTexCoord2f(vertText[faceText[i][0]-1][0], vertText[faceText[i][0]-1][1]); glVertex3f(vert[face[i][0]][0], vert[face[i][0]][1], vert[face[i][0]][2]);
+			glTexCoord2f(vertText[faceText[i][1]-1][0], vertText[faceText[i][1]-1][1]); glVertex3f(vert[face[i][1]][0], vert[face[i][1]][1], vert[face[i][1]][2]);
+			glTexCoord2f(vertText[faceText[i][2]-1][0], vertText[faceText[i][1]-1][1]); glVertex3f(vert[face[i][2]][0], vert[face[i][2]][1], vert[face[i][2]][2]);
+			glEnd();
+			glPopMatrix();	
+			
+			cout << "tex coords" << vertText[faceText[i][0]-1][0] << " " << vertText[faceText[i][0]-1][1] << "     :" << endl;
+			
+
+			
+			//exit(1);
+		}
+		
+		
+		/*
+		glPushMatrix();
+		glRotatef(90, 0, 1, 0);
+		glTranslated(-1.0, -2, 0);
+		glScalef(3, 3, 3);
+		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE,GL_MODULATE);
+		glBindTexture(GL_TEXTURE_2D, g.tex.roadTexture);
+		glBegin(GL_TRIANGLES);
+		glTexCoord2f(0.0, 1.0); glVertex3f(-8.0, 0.0, -1.0);
+		glTexCoord2f(1.0, 1.0); glVertex3f(8.0, 0.0, -1.0);
+		glTexCoord2f(1.0, 0.0); glVertex3f(8.0, 0.0, 1.0);
+		
+
+		glEnd();
+		glPopMatrix();
+		
+		glPushMatrix();
+		glRotatef(90, 0, 1, 0);
+		glTranslated(-1.0, -2, 0);
+		glScalef(3, 3, 3);
+		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE,GL_MODULATE);
+		glBindTexture(GL_TEXTURE_2D, g.tex.roadTexture);
+		glBegin(GL_TRIANGLES);
+		glTexCoord2f(0.0, 0.0); glVertex3f(-8.0, 0.0, 1.0);
+		glTexCoord2f(1.0, 0.0); glVertex3f(8.0, 0.0, 1.0);
+		glTexCoord2f(0.0, 1.0); glVertex3f(-8.0, 0.0, -1.0);
+		glEnd();
+		glPopMatrix();
+		
+		*/
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glClear(GL_DEPTH_BUFFER_BIT);
+		
+
+		
+	}
+	
 	void triShadowVolume() {
 	    for (int i=0; i<nshadows; i++) {
 		glPushMatrix();
@@ -362,7 +439,7 @@ class Object {
 		glPopMatrix();
 	    }
 	}
-} *track, *kart, *bowser;
+} *track, *kart, *bowser, *block;
 
 int main(void)
 {
@@ -469,7 +546,12 @@ void reshape_window(int width, int height)
 
 void init(void)
 {
-	system("export __GL_SYNC_TO_VBLANK=0");
+	//Display *dpy = glXGetCurrentDisplay();
+	//GLXDrawable drawable = glXGetCurrentDrawable();
+	//unsigned int swap = 0;
+	//glXQueryDrawable(dpy, drawable, GLX_SWAP_INTERVAL_EXT, &swap);
+	
+	//system("export __GL_SYNC_TO_VBLANK=0");
     //track
     Object *buildModel(const char *mname);
     track = buildModel("./assets/tracktext.obj");
@@ -491,6 +573,7 @@ void init(void)
     bowser->rotate(0, 180, 0);
     bowser->translate(-0.5, 0, -3.0);
     bowser->setColor(.4,.2,.9);
+    
 }
 
 void init_opengl(void)
@@ -675,17 +758,27 @@ Object *buildModel(const char *mname)
     fclose(fpi);
     printf("nverts: %i   nfaces: %i    nt: %i\n", nv, nf, nt);
 
-    Object *o = new Object(nv, nf);
+    Object *o = new Object(nv, nf, nt, ntf);
     for (int i=0; i<nv; i++) {
-	o->setVert(vert[i], i);
+		o->setVert(vert[i], i);
     }
-    //opengl default for front facing is counter-clockwise.
-    //now build the triangles...
+	cout << "done 1" << endl;
+	for (int i=0; i<nt; i++) {
+		o->setVertText(verttc[i], i);
+	}
+	cout << "done 2" << endl;
     for (int i=0; i<nf; i++) {
-	o->setFace(face[i], i);
+		o->setFace(face[i], i);
     }
+    cout << "done 3" << endl;
+    for (int i=0; i<ntf; i++) {
+		o->setFaceText(text[i], i);
+	}
+	cout << "done 4" << endl;
     delete [] vert;
+    delete [] verttc;
     delete [] face;
+    delete [] text;
     return o;
 }
 
@@ -1045,7 +1138,7 @@ void render(void)
     //track->translate(-1.0, -2, 0);
     //track->rotate(0, 90, 0);
     //track->setColor(0.2,0.2,0.2);
-    
+    /*
     glPushMatrix();
     glRotatef(90, 0, 1, 0);
     glTranslated(-1.0, -2, 0);
@@ -1061,6 +1154,9 @@ void render(void)
     glPopMatrix();
     glBindTexture(GL_TEXTURE_2D, 0);
     glClear(GL_DEPTH_BUFFER_BIT);
+    * */
+    track->drawTexture();
+    
     //
     bowser->draw();
     kart->draw();
@@ -1086,16 +1182,7 @@ void render(void)
     ggprint8b(&r, 16, 0xFFFFFFFF, "kart z: %f", kart->pos[2]);
     
     //fps counter
-   
     ggprint8b(&r, 16, 0xFFFFFFFF, "fps: %i", g.fps);
-   	
-    
-    //ggprint8b(&r, 16, 0x00000000, "smoke[0] x: %f", g.smoke[0].pos[0]);
-    //ggprint8b(&r, 16, 0x00000000, "smoke[0] y: %f", g.smoke[0].pos[1]);
-    //ggprint8b(&r, 16, 0x00000000, "smoke[0] z: %f", g.smoke[0].pos[2]);
-    
-    
-
     //
     glPopAttrib();
 }
