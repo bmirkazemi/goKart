@@ -439,7 +439,7 @@ class Object {
 		glPopMatrix();
 	    }
 	}
-} *track, *kart, *bowser, *block;
+} *track, *kart, *bowser, *block, *finish;
 
 int main(void)
 {
@@ -573,7 +573,14 @@ void init(void)
     bowser->rotate(0, 180, 0);
     bowser->translate(-0.5, 0, -3.0);
     bowser->setColor(.4,.2,.9);
-    
+    //finishline
+    Object *buildModel(const char *mname);
+    finish = buildModel("./assets/finishline.obj");
+    finish->scale(1);
+    finish->translate(-1.0, -2, 0);
+    finish->rotate(0, 90, 0);
+    finish->setColor (0.9, 0.9, 0.9);
+
 }
 
 void init_opengl(void)
@@ -1156,7 +1163,7 @@ void render(void)
     glClear(GL_DEPTH_BUFFER_BIT);
     * */
     track->drawTexture();
-    
+    finish->draw(); 
     //
     bowser->draw();
     kart->draw();
