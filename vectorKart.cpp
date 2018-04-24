@@ -19,32 +19,28 @@
 #include <time.h>
 using namespace std;
 
-typedef float Flt;
-typedef Flt Vec[3];
-typedef Flt	Matrix[4][4];
-typedef int iVec[3];
 //some defined macros
 #define VecMake(x,y,z,v) (v)[0]=(x),(v)[1]=(y),(v)[2]=(z)
 #define VecNegate(a) (a)[0]=(-(a)[0]);\
 			    (a)[1]=(-(a)[1]);\
-(a)[2]=(-(a)[2])
+				(a)[2]=(-(a)[2])
 #define VecDot(a,b) ((a)[0]*(b)[0]+(a)[1]*(b)[1]+(a)[2]*(b)[2])
 #define VecLen(a) ((a)[0]*(a)[0]+(a)[1]*(a)[1]+(a)[2]*(a)[2])
 #define VecLenSq(a) sqrtf((a)[0]*(a)[0]+(a)[1]*(a)[1]+(a)[2]*(a)[2])
 #define VecCopy(a,b) (b)[0]=(a)[0];(b)[1]=(a)[1];(b)[2]=(a)[2]
 #define VecAdd(a,b,c) (c)[0]=(a)[0]+(b)[0];\
-			     (c)[1]=(a)[1]+(b)[1];\
-(c)[2]=(a)[2]+(b)[2]
+			  	(c)[1]=(a)[1]+(b)[1];\
+				(c)[2]=(a)[2]+(b)[2]
 #define VecSub(a,b,c) (c)[0]=(a)[0]-(b)[0];\
-			     (c)[1]=(a)[1]-(b)[1];\
-(c)[2]=(a)[2]-(b)[2]
+			   	(c)[1]=(a)[1]-(b)[1];\
+				(c)[2]=(a)[2]-(b)[2]
 #define VecS(A,a,b) (b)[0]=(A)*(a)[0]; (b)[1]=(A)*(a)[1]; (b)[2]=(A)*(a)[2]
 #define VecAddS(A,a,b,c) (c)[0]=(A)*(a)[0]+(b)[0];\
 				(c)[1]=(A)*(a)[1]+(b)[1];\
-(c)[2]=(A)*(a)[2]+(b)[2]
+				(c)[2]=(A)*(a)[2]+(b)[2]
 #define VecCross(a,b,c) (c)[0]=(a)[1]*(b)[2]-(a)[2]*(b)[1];\
-			       (c)[1]=(a)[2]*(b)[0]-(a)[0]*(b)[2];\
-(c)[2]=(a)[0]*(b)[1]-(a)[1]*(b)[0]
+			   	(c)[1]=(a)[2]*(b)[0]-(a)[0]*(b)[2];\
+				(c)[2]=(a)[0]*(b)[1]-(a)[1]*(b)[0]
 #define VecZero(v) (v)[0]=0.0;(v)[1]=0.0;v[2]=0.0
 #define ABS(a) (((a)<0)?(-(a)):(a))
 #define SGN(a) (((a)<0)?(-1):(1))
@@ -57,49 +53,33 @@ typedef int iVec[3];
     a[0]=MY_INFINITY*(b[0]-g.lightPosition[0])+g.lightPosition[0];\
 a[1]=MY_INFINITY*(b[1]-g.lightPosition[1])+g.lightPosition[1];\
 a[2]=MY_INFINITY*(b[2]-g.lightPosition[2])+g.lightPosition[2]
-const Flt DTR = 1.0 / 180.0 * PI;
 
 Display *dpy;
 Window win;
 GLXContext glc;
 
+typedef float Flt;
+typedef Flt Vec[3];
+typedef Flt	Matrix[4][4];
+typedef int iVec[3];
+const Flt DTR = 1.0 / 180.0 * PI;
+
 void init(void);
 void initXWindows(void);
 void init_opengl(void);
 void cleanupXWindows(void);
-void check_resize(XEvent *e);
 void check_mouse(XEvent *e);
 int check_keys(XEvent *e);
 void physics(void);
 void render(void);
 void callControls(void);
 void vecScale(Vec v, Flt scale);
-void drawSmoke(void);
-void make_a_smoke(void);
-void smokephysics(void);
 void vecSub(Vec v0, Vec v1, Vec dest);
 bool pointInTriangle(Vec tri[3], Vec p, Flt *u, Flt *v);
 Flt vecDotProduct(Vec v0, Vec v1);
 void vecCrossProduct(Vec v0, Vec v1, Vec dest);
 Flt vecLength(Vec vec);
-
 const Vec upv = {0.0, 1.0, 0.0};
-const int MAX_SMOKES = 200000;
-
-class Smoke {
-    public:
-	Vec pos;
-	Vec vert[16];
-	Flt radius;
-	int n;
-	struct timespec tstart;
-	Flt maxtime;
-	Flt alpha;
-	Flt distance;
-	Smoke() {
-
-	}
-};
 
 //-----------------------------------------------------------------------------
 //Setup timers
@@ -179,10 +159,6 @@ class Global {
 	int billboarding;
 	struct timespec smokeStart, smokeTime;
 	struct timespec renderStart, renderTime;
-	Smoke *smoke;
-	int nsmokes;
-	bool wind;
-	Flt windrate;
 	Global() {
 		fps = 0;
 	    for (int i = 0; i < 65336; i++) {
@@ -197,18 +173,10 @@ class Global {
 	    VecMake(0.0, 20.0, -1.0, cameraPosition);
 	    VecMake(100.0f, 240.0f, 40.0f, lightPosition);
 	    lightPosition[3] = 1.0f;
-	    clock_gettime(CLOCK_REALTIME, &smokeStart);
-	    nsmokes = 0;
-	    smoke = new Smoke[MAX_SMOKES];
-	    windrate = 0.05f;
 	}
 	void identity33(Matrix m) {
 	    m[0][0] = m[1][1] = m[2][2] = 1.0f;
 	    m[0][1] = m[0][2] = m[1][0] = m[1][2] = m[2][0] = m[2][1] = 0.0f;
-	}
-	~Global() {
-	    if (smoke)
-		delete [] smoke;
 	}
 } g;
 
@@ -366,55 +334,24 @@ class Object {
 			glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE,GL_MODULATE);
 			glBindTexture(GL_TEXTURE_2D, g.tex.roadTexture);
 			glBegin(GL_TRIANGLES);
-			glTexCoord2f(vertText[faceText[i][0]-1][0], vertText[faceText[i][0]-1][1]); glVertex3f(vert[face[i][0]][0], vert[face[i][0]][1], vert[face[i][0]][2]);
-			glTexCoord2f(vertText[faceText[i][1]-1][0], vertText[faceText[i][1]-1][1]); glVertex3f(vert[face[i][1]][0], vert[face[i][1]][1], vert[face[i][1]][2]);
-			glTexCoord2f(vertText[faceText[i][2]-1][0], vertText[faceText[i][1]-1][1]); glVertex3f(vert[face[i][2]][0], vert[face[i][2]][1], vert[face[i][2]][2]);
+			
+			glTexCoord2f(vertText[faceText[i][0]-1][0], vertText[faceText[i][0]-1][1]); 
+			glVertex3f(vert[face[i][0]][0], vert[face[i][0]][1], vert[face[i][0]][2]);
+			
+			glTexCoord2f(vertText[faceText[i][1]-1][0], vertText[faceText[i][1]-1][1]); 
+			glVertex3f(vert[face[i][1]][0], vert[face[i][1]][1], vert[face[i][1]][2]);
+			
+			glTexCoord2f(vertText[faceText[i][2]-1][0], vertText[faceText[i][1]-1][1]); 
+			glVertex3f(vert[face[i][2]][0], vert[face[i][2]][1], vert[face[i][2]][2]);
+			
 			glEnd();
 			glPopMatrix();	
 			
 			cout << "tex coords" << vertText[faceText[i][0]-1][0] << " " << vertText[faceText[i][0]-1][1] << "     :" << endl;
-			
-
-			
-			//exit(1);
 		}
 		
-		
-		/*
-		glPushMatrix();
-		glRotatef(90, 0, 1, 0);
-		glTranslated(-1.0, -2, 0);
-		glScalef(3, 3, 3);
-		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE,GL_MODULATE);
-		glBindTexture(GL_TEXTURE_2D, g.tex.roadTexture);
-		glBegin(GL_TRIANGLES);
-		glTexCoord2f(0.0, 1.0); glVertex3f(-8.0, 0.0, -1.0);
-		glTexCoord2f(1.0, 1.0); glVertex3f(8.0, 0.0, -1.0);
-		glTexCoord2f(1.0, 0.0); glVertex3f(8.0, 0.0, 1.0);
-		
-
-		glEnd();
-		glPopMatrix();
-		
-		glPushMatrix();
-		glRotatef(90, 0, 1, 0);
-		glTranslated(-1.0, -2, 0);
-		glScalef(3, 3, 3);
-		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE,GL_MODULATE);
-		glBindTexture(GL_TEXTURE_2D, g.tex.roadTexture);
-		glBegin(GL_TRIANGLES);
-		glTexCoord2f(0.0, 0.0); glVertex3f(-8.0, 0.0, 1.0);
-		glTexCoord2f(1.0, 0.0); glVertex3f(8.0, 0.0, 1.0);
-		glTexCoord2f(0.0, 1.0); glVertex3f(-8.0, 0.0, -1.0);
-		glEnd();
-		glPopMatrix();
-		
-		*/
 		glBindTexture(GL_TEXTURE_2D, 0);
-		glClear(GL_DEPTH_BUFFER_BIT);
-		
-
-		
+		glClear(GL_DEPTH_BUFFER_BIT);		
 	}
 	
 	void triShadowVolume() {
@@ -452,7 +389,6 @@ int main(void)
 		while (XPending(dpy)) {
 			XEvent e;
 			XNextEvent(dpy, &e);
-			check_resize(&e);
 			check_keys(&e);
 		}
 		clock_gettime(CLOCK_REALTIME, &g.renderTime);
@@ -561,14 +497,14 @@ void init(void)
     track->setColor(0.2,0.2,0.2);
     //mario
     Object *buildModel(const char *mname);
-    kart = buildModel("./mario/karttex.obj");
+    kart = buildModel("./assets/mario/karttex.obj");
     kart->scale(0.2);
     kart->rotate(0, 180, 0);
     kart->translate(-0.5, 0, 0);
     kart->setColor(.8,0,.9);
     //bowser
     Object *buildModel(const char *mname);
-    bowser = buildModel("./bowser/bkart.obj");
+    bowser = buildModel("./assets/bowser/bkart.obj");
     bowser->scale(0.5);
     bowser->rotate(0, 180, 0);
     bowser->translate(-0.5, 0, -3.0);
@@ -605,7 +541,8 @@ void init_opengl(void)
     glEnable(GL_TEXTURE_2D);
     initialize_fonts();
     //init_textures();
-    
+   
+   	//background image texturing	
     g.tex.backImage = &img[0];
     glGenTextures(1, &g.tex.backTexture);
     int w = g.tex.backImage->width;
@@ -620,6 +557,7 @@ void init_opengl(void)
     g.tex.yc[0] = 0.0;
     g.tex.yc[1] = 1.0;
 
+	//road texturing
 	g.tex.roadImage = &img[1];
     glGenTextures(1, &g.tex.roadTexture);
     int wRoad = g.tex.roadImage->width;
@@ -642,19 +580,6 @@ void init_opengl(void)
 	exit(0);
     }
     //------------------------------------------------------------------------
-}
-
-void check_resize(XEvent *e)
-{
-    //The ConfigureNotify is sent by the
-    //server if the window is resized.
-    if (e->type != ConfigureNotify)
-	return;
-    XConfigureEvent xce = e->xconfigure;
-    if (xce.width != g.xres || xce.height != g.yres) {
-	//Window size did change.
-	reshape_window(xce.width, xce.height);
-    }
 }
 
 Object *buildModel(const char *mname)
@@ -789,46 +714,6 @@ Object *buildModel(const char *mname)
     return o;
 }
 
-void make_view_matrix(const Vec p1, const Vec p2, Matrix m)
-{
-    //Line between p1 and p2 form a LOS Line-of-sight.
-    //A rotation matrix is built to transform objects to this LOS.
-    //Diana Gruber  http://www.makegames.com/3Drotation/
-    m[0][0]=m[1][1]=m[2][2]=1.0f;
-    m[0][1]=m[0][2]=m[1][0]=m[1][2]=m[2][0]=m[2][1]=0.0f;
-    Vec out = { p2[0]-p1[0], p2[1]-p1[1], p2[2]-p1[2] };
-    //
-    Flt l1, len = out[0]*out[0] + out[1]*out[1] + out[2]*out[2];
-    if (len == 0.0f) {
-	VecMake(0.0f,0.0f,1.0f,out);
-    } else {
-	l1 = 1.0f / sqrtf(len);
-	out[0] *= l1;
-	out[1] *= l1;
-	out[2] *= l1;
-    }
-    m[2][0] = out[0];
-    m[2][1] = out[1];
-    m[2][2] = out[2];
-    Vec up = { -out[1] * out[0], upv[1] - out[1] * out[1], -out[1] * out[2] };
-    //
-    len = up[0]*up[0] + up[1]*up[1] + up[2]*up[2];
-    if (len == 0.0f) {
-	VecMake(0.0f,0.0f,1.0f,up);
-    }
-    else {
-	l1 = 1.0f / sqrtf(len);
-	up[0] *= l1;
-	up[1] *= l1;
-	up[2] *= l1;
-    }
-    m[1][0] = up[0];
-    m[1][1] = up[1];
-    m[1][2] = up[2];
-    //make left vector.
-    VecCross(up, out, m[0]);
-}
-
 int check_keys(XEvent *e)
 {
     //Was there input from the keyboard?
@@ -863,10 +748,6 @@ Flt VecNormalize(Vec vec) {
     vec[2] *= tlen;
     return(len);
 }
-
-
-
-
 
 bool pointInTriangle(Vec tri[3], Vec p, Flt *u, Flt *v)
 {
@@ -924,6 +805,12 @@ void vecSub(Vec v0, Vec v1, Vec dest)
     dest[0] = v0[0] - v1[0];
     dest[1] = v0[1] - v1[1];
     dest[2] = v0[2] - v1[2];
+}
+
+void vecScale(Vec v, Flt scale) {
+    v[0] *= scale;
+    v[1] *= scale;
+    v[2] *= scale;
 }
 
 void yy_transform(const Vec rotate, Matrix a)
@@ -1095,7 +982,6 @@ void renderShadows() {
 
 void render(void)
 {
-
     Rect r;
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
     //
@@ -1119,10 +1005,7 @@ void render(void)
 	glEnd();
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glClear(GL_DEPTH_BUFFER_BIT);
-	
-	
-	
-	
+		
     //3D mode
     glEnable(GL_LIGHTING);
     glMatrixMode(GL_PROJECTION); glLoadIdentity();
@@ -1138,33 +1021,9 @@ void render(void)
 	    kart->nextPos[0], kart->nextPos[1], kart->nextPos[2],
 	    up[0], up[1], up[2]);
     glLightfv(GL_LIGHT0, GL_POSITION, g.lightPosition);
-    //
     
-    //draw track texture
-    //track->scale(3);
-    //track->translate(-1.0, -2, 0);
-    //track->rotate(0, 90, 0);
-    //track->setColor(0.2,0.2,0.2);
-    /*
-    glPushMatrix();
-    glRotatef(90, 0, 1, 0);
-    glTranslated(-1.0, -2, 0);
-    glScalef(3, 3, 3);
-    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE,GL_MODULATE);
-    glBindTexture(GL_TEXTURE_2D, g.tex.roadTexture);
-    glBegin(GL_QUADS);
-    glTexCoord2f(g.tex.xc[0], g.tex.yc[0]); glVertex3f(track->vert[0][0], track->vert[0][1], track->vert[0][2]);
-	glTexCoord2f(g.tex.xc[1], g.tex.yc[0]); glVertex3f(track->vert[2][0], track->vert[2][1], track->vert[2][2]);
-    glTexCoord2f(g.tex.xc[1], g.tex.yc[1]); glVertex3f(track->vert[3][0], track->vert[3][1], track->vert[3][2]);
-    glTexCoord2f(g.tex.xc[0], g.tex.yc[1]); glVertex3f(track->vert[1][0], track->vert[1][1], track->vert[1][2]);
-    glEnd();
-    glPopMatrix();
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glClear(GL_DEPTH_BUFFER_BIT);
-    * */
-    track->drawTexture();
+	track->drawTexture();
     finish->draw(); 
-    //
     bowser->draw();
     kart->draw();
     //renderShadows();
@@ -1190,7 +1049,6 @@ void render(void)
     
     //fps counter
     ggprint8b(&r, 16, 0xFFFFFFFF, "fps: %i", g.fps);
-    //
     glPopAttrib();
 }
 
@@ -1199,7 +1057,6 @@ void callControls() {
     if (g.keypress[XK_Escape]) {
 	g.done = 1;
     }
-
     //drive forward
     if (g.keypress[XK_w]) {
 	kart->vel[0] += 0.002;
@@ -1224,7 +1081,6 @@ void callControls() {
 	kart->pos[0] += kart->dir[0] * kart->vel[0];
 	kart->pos[2] += kart->dir[2] * kart->vel[2];
     }
-
     //turn left
     if (g.keypress[XK_a]) {
 	kart->Hangle -= 0.02f;
@@ -1232,7 +1088,6 @@ void callControls() {
 	kart->dir[2] = -cos(kart->Hangle);
 	kart->rotate(0, 1.147, 0);
     }
-
     //turn right
     if (g.keypress[XK_d]) {
 	kart->Hangle += 0.02f;
@@ -1240,7 +1095,6 @@ void callControls() {
 	kart->dir[2] = -cos(kart->Hangle);
 	kart->rotate(0, -1.147, 0);
     }
-
     //getting last position for the camera
     kart->nextPos[0] = kart->pos[0] + kart->dir[0];
     kart->nextPos[1] = kart->pos[1] + kart->dir[1];
@@ -1254,146 +1108,5 @@ void callControls() {
     g.cameraPosition[1] = kart->lastPos[1];
     g.cameraPosition[2] = kart->lastPos[2];
 
-}
-
-void vecScale(Vec v, Flt scale) {
-    v[0] *= scale;
-    v[1] *= scale;
-    v[2] *= scale;
-}
-
-void drawSmoke()
-{
-    bool swapped;
-    for (int i = 0; i < g.nsmokes; i++) {
-	g.smoke[i].distance = sqrt(pow((g.smoke[i].pos[0] - g.cameraPosition[0]), 2) + pow((g.smoke[i].pos[1] - g.cameraPosition[1]), 2) + pow((g.smoke[i].pos[2] - g.cameraPosition[2]), 2));
-    }
-
-    if (g.sorting) {
-	for (int i = 0; i < g.nsmokes - 1; i++) {
-	    swapped = false;
-	    for (int j = 0; j < g.nsmokes - 1; j++) {
-		if (g.smoke[j].distance < g.smoke[j+1].distance) {
-		    swap(g.smoke[j], g.smoke[j+1]);
-		    swapped = true;
-		}
-	    }
-	    if (swapped == false) {
-		break;
-	    }
-	}
-    }
-    //
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    for (int i=0; i<g.nsmokes; i++) {
-	glPushMatrix();
-	glTranslatef(g.smoke[i].pos[0],g.smoke[i].pos[1],g.smoke[i].pos[2]);
-	if (g.billboarding) {
-	    Vec v;
-	    v[0] = g.smoke[i].pos[0] - g.cameraPosition[0];
-	    v[1] = g.smoke[i].pos[1] - g.cameraPosition[1];
-	    v[2] = g.smoke[i].pos[2] - g.cameraPosition[2];
-	    Vec z = {0.0f, 0.0f, 0.0f};
-	    make_view_matrix(z, v, g.m);
-
-	    float mat[16];
-	    mat[ 0] = g.m[0][0];
-	    mat[ 1] = g.m[0][1];
-	    mat[ 2] = g.m[0][2];
-	    mat[ 4] = g.m[1][0];
-	    mat[ 5] = g.m[1][1];
-	    mat[ 6] = g.m[1][2];
-	    mat[ 8] = g.m[2][0];
-	    mat[ 9] = g.m[2][1];
-	    mat[10] = g.m[2][2];
-	    mat[ 3] = mat[ 7] = mat[11] = mat[12] = mat[13] = mat[14] = 0.0f;
-	    mat[15] = 1.0f;
-	    glMultMatrixf(mat);
-	}
-	glColor4ub(255, 0, 0, (unsigned char)g.smoke[i].alpha);
-	glBegin(GL_TRIANGLE_FAN);
-	glNormal3f(0.0, 0.0, 1.0);
-	for (int j=0; j<g.smoke[i].n; j++) {
-	    //each vertex of the smoke
-	    //glVertex3fv(g.smoke[i].vert[j]);
-	    VecNormalize(g.smoke[i].vert[j]);
-	    vecScale(g.smoke[i].vert[j], g.smoke[i].radius);
-	    glVertex3fv(g.smoke[i].vert[j]);
-	}
-	glEnd();
-	glPopMatrix();
-    }
-    glDisable(GL_BLEND);
-}
-
-void make_a_smoke()
-{
-    if (g.nsmokes < MAX_SMOKES) {
-	Smoke *s = &g.smoke[g.nsmokes];
-	s->pos[0] = kart->pos[2];
-	s->pos[2] = kart->pos[0];
-	s->pos[1] = kart->pos[1];
-	s->radius = 0.01;
-	s->n = rand() % 5 + 5;
-	Flt angle = 0.0;
-	Flt inc = (PI*2.0) / (Flt)s->n;
-	for (int i=0; i<s->n; i++) {
-	    s->vert[i][0] = cos(angle) * s->radius;
-	    s->vert[i][1] = sin(angle) * s->radius;
-	    s->vert[i][2] = 0.0;
-	    angle += inc;
-	}
-	s->maxtime = 8.0;
-	s->alpha = 100.0;
-	clock_gettime(CLOCK_REALTIME, &s->tstart);
-	++g.nsmokes;
-    }
-}
-
-void smokephysics() {
-    clock_gettime(CLOCK_REALTIME, &g.smokeTime);
-    double d = timeDiff(&g.smokeStart, &g.smokeTime);
-    if (d > 0.05) {
-	//time to make another smoke particle
-	for (int i = 0; i < 100; i++) {
-	    make_a_smoke();
-	}
-	timeCopy(&g.smokeStart, &g.smokeTime);
-    }
-    //move smoke particles
-    for (int i=0; i<g.nsmokes; i++) {
-	//smoke rising
-	g.smoke[i].pos[1] += 0.015;
-	g.smoke[i].pos[1] += ((g.smoke[i].pos[1]*0.24) * (rnd() * 0.075));
-	//expand particle as it rises
-	// g.smoke[i].radius += g.smoke[i].pos[1]*0.002;
-	//wind might blow particle
-	//if (g.smoke[i].pos[1] > 10.0) {
-	//    g.smoke[i].pos[0] -= rnd() * 0.1;
-	//}
-	//if (g.wind == true) {
-	//    g.smoke[i].pos[0] += g.windrate;
-	//}
-    }
-    //check for smoke out of time
-    int i=0;
-    while (i < g.nsmokes) {
-	struct timespec bt;
-	clock_gettime(CLOCK_REALTIME, &bt);
-	double d = timeDiff(&g.smoke[i].tstart, &bt);
-	if (d > g.smoke[i].maxtime - 3.0) {
-	    g.smoke[i].alpha *= 0.95;
-	    if (g.smoke[i].alpha < 1.0)
-		g.smoke[i].alpha = 1.0;
-	}
-	if (d > g.smoke[i].maxtime) {
-	    //delete this smoke
-	    --g.nsmokes;
-	    g.smoke[i] = g.smoke[g.nsmokes];
-	    continue;
-	}
-	++i;
-    }
 }
 
