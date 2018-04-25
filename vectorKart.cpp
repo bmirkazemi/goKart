@@ -376,7 +376,7 @@ class Object {
 		glPopMatrix();
 	    }
 	}
-} *track, *kart, *bowser, *block, *finish;
+} *track, *kart, *bowser, *block, *finish, *cones;
 
 int main(void)
 {
@@ -482,15 +482,14 @@ void reshape_window(int width, int height)
 
 void init(void)
 {
-	//Display *dpy = glXGetCurrentDisplay();
-	//GLXDrawable drawable = glXGetCurrentDrawable();
-	//unsigned int swap = 0;
-	//glXQueryDrawable(dpy, drawable, GLX_SWAP_INTERVAL_EXT, &swap);
-	
-	//system("export __GL_SYNC_TO_VBLANK=0");
+    //Display *dpy = glXGetCurrentDisplay();
+    //GLXDrawable drawable = glXGetCurrentDrawable();
+    //unsigned int swap = 0;
+    //glXQueryDrawable(dpy, drawable, GLX_SWAP_INTERVAL_EXT, &swap);	
+    //system("export __GL_SYNC_TO_VBLANK=0");
     //track
     Object *buildModel(const char *mname);
-    track = buildModel("./assets/tracktext.obj");
+    track = buildModel("./assets/trackfinal.obj");
     track->scale(3);
     track->translate(-1.0, -2, 0);
     track->rotate(0, 90, 0);
@@ -516,7 +515,13 @@ void init(void)
     finish->translate(-1.0, -2, 0);
     finish->rotate(0, 90, 0);
     finish->setColor (0.9, 0.9, 0.9);
-
+    //cones
+    Object *buildModel(const char *mname);
+    cones = buildModel("./assets/cones.obj");
+    cones->scale(1);
+    cones->translate(-1.0, -2, 15.0);
+    cones->rotate(0, 90, 0);
+    cones->setColor (0.9, 0, 0.9);
 }
 
 void init_opengl(void)
@@ -1009,7 +1014,7 @@ void render(void)
     //3D mode
     glEnable(GL_LIGHTING);
     glMatrixMode(GL_PROJECTION); glLoadIdentity();
-    gluPerspective(45.0f, g.aspectRatio, 0.1f, 100.0f);
+    gluPerspective(45.0f, g.aspectRatio, 0.1f, 1000.0f);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     //for documentation...
@@ -1022,7 +1027,9 @@ void render(void)
 	    up[0], up[1], up[2]);
     glLightfv(GL_LIGHT0, GL_POSITION, g.lightPosition);
     
-	track->drawTexture();
+//	track->drawTexture();
+    cones->draw();
+    track->draw();
     finish->draw(); 
     bowser->draw();
     kart->draw();
