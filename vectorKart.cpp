@@ -151,8 +151,11 @@ class Global {
 	GLfloat lightPosition[4];
 	Vec cameraPosition;
 	Vec spot;
+	bool passCones[10];
 	bool shadows;
 	Matrix m;
+	int lapcount;
+	int conecount;
 	int fps;
 	int circling;
 	int sorting;
@@ -160,6 +163,11 @@ class Global {
 	struct timespec smokeStart, smokeTime;
 	struct timespec renderStart, renderTime;
 	Global() {
+		lapcount = 0;
+		conecount;
+		for(int i = 0; i< 10; i++) {
+			passCones[i] = false;
+		}
 		fps = 0;
 	    for (int i = 0; i < 65336; i++) {
 		keypress[i] = 0;
@@ -376,7 +384,7 @@ class Object {
 		glPopMatrix();
 	    }
 	}
-} *track, *kart, *bowser, *block, *finish, *cones;
+} *track, *kart, *bowser, *block, *finish, *cones[10];
 
 int main(void)
 {
@@ -516,12 +524,39 @@ void init(void)
     finish->rotate(0, 90, 0);
     finish->setColor (0.9, 0.9, 0.9);
     //cones
-    Object *buildModel(const char *mname);
-    cones = buildModel("./assets/cones.obj");
-    cones->scale(1);
-    cones->translate(-1.0, -2, 15.0);
-    cones->rotate(0, 90, 0);
-    cones->setColor (0.9, 0, 0.9);
+    for (int i = 0; i < 10; i++) {
+		Object *buildModel(const char *mname);
+		cones[i] = buildModel("./assets/cones.obj");
+		cones[i]->scale(0.7);
+		cones[i]->setColor (0.9, 0, 0.9);
+	}
+
+    cones[0]->translate(-1.8, -2, -15.0);
+    cones[0]->rotate(0, 0, 0);
+    
+    cones[1]->translate(-13.5, -2, -40.0);
+    cones[1]->rotate(0, 30, 0);
+    
+    cones[2]->translate(0, -2, -102.5);
+    cones[2]->rotate(0, 90, 0);
+    
+    cones[3]->translate(41, -2, -85);
+    cones[3]->rotate(0,30,0);
+    
+    cones[4]->translate(70, -2, -22);
+    
+    cones[5]->translate(70, -2, 94);
+    
+    cones[6]->translate(88, -2, 127);
+    cones[6]->rotate(0,60,0);
+    
+    cones[7]->translate(100, -2, 172);
+    
+    cones[8]->translate(52, -2, 191);
+    cones[8]->rotate(0,85,0);
+    
+    cones[9]->translate(-8, -2, 70);
+    
 }
 
 void init_opengl(void)
@@ -886,9 +921,6 @@ void trans_vector(Matrix mat, const Vec in, Vec out)
 
 void physics(void)
 {
-    Vec camUpdate = {kart->pos[0], kart->pos[1] + 1.0f, kart->pos[2] + 3.0f};
-    VecMake(camUpdate[0], camUpdate[1], camUpdate[2], g.cameraPosition);
-
     //apply gravity to kart
     kart->applyGravity();
 
@@ -904,8 +936,47 @@ void physics(void)
 
     //call keypress functions activated
     callControls();
-    //smokephysics();
-
+  
+	//lap system
+	if (kart->pos[2] <= cones[0]->pos[2] && g.passCones[0] == false) {
+		cones[0]->setColor(1.0, 1.0, 1.0);
+		g.conecount++;
+		g.passCones[0] = true;
+	}
+	
+	if (kart->pos[2] <= cones[1]->pos[2] && g.passCones[0] == true && g.passCones[1] == false) {
+		cones[1]->setColor(1.0, 1.0, 1.0);
+		g.conecount++;
+		g.passCones[1] = true;
+	}
+	
+	if (kart->pos[0] >= cones[2]->pos[0] && kart->pos[2] <= cones[2]->pos[2] + 3.0f && g.passCones[1] == true 
+		&& g.passCones[2] == false) {
+		cones[2]->setColor(1.0, 1.0, 1.0);
+		g.conecount++;
+		g.passCones[2] = true;
+	} 
+	
+	if (kart->pos[0] >= cones[3]->pos[0] && kart->pos[2] >= cones[3]->pos[2] && g.passCones[2] == true
+		&& g.passCones[3] == false) {
+		cones[3]->setColor(1.0, 1.0, 1.0);
+		g.conecount++;
+		g.passCones[3] = true;
+	}
+	
+	if (kart->pos[2] >= cones[4]->pos[2] && g.passCones[3] == true && g.passCones[4] == false) {
+		cones[4]->setColor(1.0, 1.0, 1.0);
+		g.conecount++;
+		g.passCones[4] = true;
+	}
+		
+	if (kart->pos[2] >= cones[5]->pos[2] && g.passCones[4] == true && g.passCones[5] == false) {
+		cones[5]->setColor(1.0, 1.0, 1.0);
+		g.conecount++;
+		g.passCones[5] = true;
+	}
+		
+		
 }
 
 void drawShadow() {
@@ -1014,7 +1085,7 @@ void render(void)
     //3D mode
     glEnable(GL_LIGHTING);
     glMatrixMode(GL_PROJECTION); glLoadIdentity();
-    gluPerspective(45.0f, g.aspectRatio, 0.1f, 1000.0f);
+    gluPerspective(60.0f, g.aspectRatio, 0.1f, 1000.0f);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     //for documentation...
@@ -1027,14 +1098,15 @@ void render(void)
 	    up[0], up[1], up[2]);
     glLightfv(GL_LIGHT0, GL_POSITION, g.lightPosition);
     
-//	track->drawTexture();
-    cones->draw();
+    //track->drawTexture();
+	for (int i = 0; i < 10; i++) {
+		cones[i]->draw();
+	}
     track->draw();
     finish->draw(); 
-    bowser->draw();
+    //bowser->draw();
     kart->draw();
     //renderShadows();
-    //drawSmoke();
     //
     //switch to 2D mode
     //
@@ -1056,6 +1128,7 @@ void render(void)
     
     //fps counter
     ggprint8b(&r, 16, 0xFFFFFFFF, "fps: %i", g.fps);
+    ggprint8b(&r, 16, 0xFFFFFFFF, "conecount: %i", g.conecount);
     glPopAttrib();
 }
 
