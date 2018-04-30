@@ -157,6 +157,7 @@ class Global {
 		bool crash;
 		Matrix m;
 		int lapcount;
+		float cx, cy, cz;
 		int conecount;
 		int fps;
 		int circling;
@@ -177,6 +178,9 @@ class Global {
 			renderCount = 0;
 			shadows = true;
 			crash = false;
+			cx = 0.0;
+			cy = 0.0;
+			cz = 0.0;
 			gravity = 0.01;
 			xres=640;
 			yres=480;
@@ -326,7 +330,13 @@ class Object {
 				}
 				glPushMatrix();
 				glBegin(GL_TRIANGLES);
-				glColor3fv(color);
+				if (j == 0) {
+				    Vec colortest;
+				    VecMake(1.0, 1.0, 1.0, colortest); 
+				    glColor3fv(colortest);
+				} else {
+				    glColor3fv(color);
+				}
 				glNormal3fv(norm);
 				glVertex3fv(tv[0]);
 				glVertex3fv(tv[1]);
@@ -971,9 +981,18 @@ void physics(void)
 	}
 
 
-	Flt u,v;
+	//Flt u,v;
 
-	for (int i=0; i<track->nfaces; i++) {
+	for (int i=0; i<1; i++) {
+		for (int j=0; j<3; j++) {
+		    g.cx += track->vert[track->face[i][j]][0];
+		    g.cy += track->vert[track->face[i][j]][1];
+		    g.cz += track->vert[track->face[i][j]][2];
+		}
+		g.cx /= 3;
+		g.cy /= 3;
+		g.cz /= 3;
+	    	/*
 		Vec tri[3];
 		for (int j=0; j<3; j++) {
 			VecMake(track->vert[track->face[i][j]][0], track->vert[track->face[i][j]][1], track->vert[track->face[i][j]][2], tri[j]);
@@ -982,6 +1001,9 @@ void physics(void)
 		if (pointInTriangle(tri[0], tri[1], tri[2], kart->pos, &u, &v)) {
 			g.crash = true;
 		}
+		if (!g.crash) 
+		    kart->applyGravity();
+		*/
 	}
 
 
@@ -1181,6 +1203,18 @@ void render(void)
 	ggprint8b(&r, 16, 0xFFFFFFFF, "fps: %i", g.fps);
 	ggprint8b(&r, 16, 0xFFFFFFFF, "conecount: %i", g.conecount);
 	ggprint8b(&r, 16, 0xFFFFFFFF, "crash: %i", g.crash);
+	ggprint8b(&r, 16, 0xFFFFFFFF, "x: %f", g.cx);
+	ggprint8b(&r, 16, 0xFFFFFFFF, "y: %f", g.cy);
+	ggprint8b(&r, 16, 0xFFFFFFFF, "z: %f", g.cz);
+	ggprint8b(&r, 16, 0xFFFFFFFF, "tri0x: %f", track->vert[track->face[0][0]][0]);
+	ggprint8b(&r, 16, 0xFFFFFFFF, "tri0y: %f", track->vert[track->face[0][0]][1]);
+	ggprint8b(&r, 16, 0xFFFFFFFF, "tri0z: %f", track->vert[track->face[0][0]][2]);
+	ggprint8b(&r, 16, 0xFFFFFFFF, "tri1x: %f", track->vert[track->face[0][1]][0]);
+	ggprint8b(&r, 16, 0xFFFFFFFF, "tri1y: %f", track->vert[track->face[0][1]][1]);
+	ggprint8b(&r, 16, 0xFFFFFFFF, "tri1z: %f", track->vert[track->face[0][1]][2]);
+	ggprint8b(&r, 16, 0xFFFFFFFF, "tri2x: %f", track->vert[track->face[0][2]][0]);
+	ggprint8b(&r, 16, 0xFFFFFFFF, "tri2y: %f", track->vert[track->face[0][2]][1]);
+	ggprint8b(&r, 16, 0xFFFFFFFF, "tri2z: %f", track->vert[track->face[0][2]][2]);
 	glPopAttrib();
 }
 
