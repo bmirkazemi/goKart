@@ -90,6 +90,12 @@ extern double timeDiff(struct timespec *start, struct timespec *end);
 extern void timeCopy(struct timespec *dest, struct timespec *source);
 //-----------------------------------------------------------------------------
 
+class Circle {
+	public:
+		Vec pos;
+		float radius;
+} circle;
+
 class Image {
 	public:
 		int width, height;
@@ -142,6 +148,8 @@ class Texture {
 
 class Global {
 	public:
+
+		bool drawCircle;
 		int done;
 		int renderCount;
 		char keypress[65536];
@@ -152,11 +160,13 @@ class Global {
 		GLfloat lightPosition[4];
 		Vec cameraPosition;
 		Vec spot;
+		float dist, vx, vy, vz;
 		bool passCones[10];
 		bool shadows;
 		bool crash;
 		Matrix m;
 		int lapcount;
+		float radius;
 		float cx, cy, cz;
 		int conecount;
 		int fps;
@@ -166,6 +176,8 @@ class Global {
 		struct timespec smokeStart, smokeTime;
 		struct timespec renderStart, renderTime;
 		Global() {
+			drawCircle = false;
+		    radius = 3.0;
 			lapcount = 0;
 			conecount;
 			for(int i = 0; i< 10; i++) {
@@ -201,6 +213,7 @@ class Object {
 		bool forward ;
 		float leftRotate;
 		float rightRotate;
+		float radius;
 		float velocity;
 		Vec *vert;
 		Vec *vertText;
@@ -232,6 +245,7 @@ class Object {
 			forward = reverse = false;
 			leftRotate = rightRotate = 0;
 			velocity = 0;
+			radius = 5.0;
 			vert = new Vec[nv];
 			vertText = new Vec[nt];
 			face = new iVec[nf];
@@ -397,7 +411,7 @@ class Object {
 				glPopMatrix();
 			}
 		}
-} *track, *kart, *bowser, *block, *finish, *cones[10];
+} *track, *kart, *bowser, *block[180], *finish, *cones[10];
 
 int main(void)
 {
@@ -536,6 +550,18 @@ void init(void)
 	finish->translate(-1.0, -2, 0);
 	finish->rotate(0, 90, 0);
 	finish->setColor (0.9, 0.9, 0.9);
+
+	//circle points
+	for (int i = 0; i < 180; i++) {
+		Object *buildModel(const char *mname);
+		block[i] = buildModel("./assets/bowser/bkart.obj");
+		block[i]->scale(0.3);
+
+		block[i]->rotate(0, 180, 0);
+		block[i]->translate(-0.5, 0, -3.0);
+		block[i]->setColor(.4,.2,.9);
+	}
+
 	//cones
 	for (int i = 0; i < 10; i++) {
 		Object *buildModel(const char *mname);
@@ -968,86 +994,101 @@ void trans_vector(Matrix mat, const Vec in, Vec out)
 void physics(void)
 {
 	//apply gravity to kart
+    if (!g.crash) {
 	kart->applyGravity();
 
-	bowser->applyGravity();
-	if(bowser->pos[1] <= track->pos[1]) {
-		bowser->pos[1] = track->pos[1];
-	}
-
-	//check if kart collided with track
-	if(kart->pos[1] <= track->pos[1]) {
+	//bowser->applyGravity();
+    } else {
 		kart->pos[1] = track->pos[1];
 	}
+    //if(bowser->pos[1] <= track->pos[1]) {
+	//bowser->pos[1] = track->pos[1];
+    //}
 
+    //check if kart collided with track
+    //if(kart->pos[1] <= track->pos[1]) {
+//	kart->pos[1] = track->pos[1];
+//}
+    //Flt u,v;
 
-	//Flt u,v;
-
-	for (int i=0; i<1; i++) {
-		for (int j=0; j<3; j++) {
-		    g.cx += track->vert[track->face[i][j]][0];
-		    g.cy += track->vert[track->face[i][j]][1];
-		    g.cz += track->vert[track->face[i][j]][2];
-		}
+	g.crash = false;
+    for (int i=0; i<track->nfaces; i++) {
+		
+		g.cx = g.cy = g.cz = g.vx = g.vy = g.vz = g.dist = 0.0f;
+		cout << i << endl;
+		g.cz = track->vert[track->face[i][0]][0] + track->vert[track->face[i][1]][0] + track->vert[track->face[i][2]][0]; 
+		g.cy = track->vert[track->face[i][0]][1] + track->vert[track->face[i][1]][1] + track->vert[track->face[i][2]][1]; 
+		g.cx = track->vert[track->face[i][0]][2] + track->vert[track->face[i][1]][2] + track->vert[track->face[i][2]][2]; 
 		g.cx /= 3;
 		g.cy /= 3;
+		g.cy -= 2;
 		g.cz /= 3;
-	    	/*
-		Vec tri[3];
-		for (int j=0; j<3; j++) {
-			VecMake(track->vert[track->face[i][j]][0], track->vert[track->face[i][j]][1], track->vert[track->face[i][j]][2], tri[j]);
+		g.cz = -g.cz;
+		g.vx = g.cx - kart->pos[0];
+		g.vy = g.cy - kart->pos[1];
+		g.vz = g.cz - kart->pos[2];
+		//g.vx = kart->pos[0] - g.cx;
+		//g.vy = kart->pos[1] - g.cy;
+		//g.vz = kart->pos[2] - g.cz;
+		g.dist = sqrt(g.vx*g.vx + g.vy*g.vy + g.vz*g.vz);
+		//vecMake(g.cx, g.cy, g.cz, circle->pos);
+		//circle->radius = g.radius;
+		if (g.drawCircle == false) {
+			block[i]->translate(g.cx, g.cy, g.cz);
 		}
-		cout << "tri0 " << tri[0][0] << " " << tri[0][1] << tri[0][2] << endl;
-		if (pointInTriangle(tri[0], tri[1], tri[2], kart->pos, &u, &v)) {
+		cout << g.dist << "==============================>>>>>>>" << endl;
+		if (g.dist < (kart->radius + g.radius)) {
 			g.crash = true;
+			break;
+			//} else {
+			//g.crash = false;
 		}
-		if (!g.crash) 
-		    kart->applyGravity();
-		*/
-	}
 
+    }
 
-	//call keypress functions activated
-	callControls();
+		g.drawCircle = true;
 
-	//lap system
-	if (kart->pos[2] <= cones[0]->pos[2] && g.passCones[0] == false) {
-		cones[0]->setColor(1.0, 1.0, 1.0);
-		g.conecount++;
-		g.passCones[0] = true;
-	}
+    //call keypress functions activated
+    callControls();
 
-	if (kart->pos[2] <= cones[1]->pos[2] && g.passCones[0] == true && g.passCones[1] == false) {
-		cones[1]->setColor(1.0, 1.0, 1.0);
-		g.conecount++;
-		g.passCones[1] = true;
-	}
+    //lap system
+    if (kart->pos[2] <= cones[0]->pos[2] && g.passCones[0] == false) {
+	cones[0]->setColor(1.0, 1.0, 1.0);
+	g.conecount++;
+	g.passCones[0] = true;
+    }
 
-	if (kart->pos[0] >= cones[2]->pos[0] && kart->pos[2] <= cones[2]->pos[2] + 3.0f && g.passCones[1] == true 
-			&& g.passCones[2] == false) {
-		cones[2]->setColor(1.0, 1.0, 1.0);
-		g.conecount++;
-		g.passCones[2] = true;
-	} 
+    if (kart->pos[2] <= cones[1]->pos[2] && g.passCones[0] == true && g.passCones[1] == false) {
+	cones[1]->setColor(1.0, 1.0, 1.0);
+	g.conecount++;
+	g.passCones[1] = true;
+    }
 
-	if (kart->pos[0] >= cones[3]->pos[0] && kart->pos[2] >= cones[3]->pos[2] && g.passCones[2] == true
-			&& g.passCones[3] == false) {
-		cones[3]->setColor(1.0, 1.0, 1.0);
-		g.conecount++;
-		g.passCones[3] = true;
-	}
+    if (kart->pos[0] >= cones[2]->pos[0] && kart->pos[2] <= cones[2]->pos[2] + 3.0f && g.passCones[1] == true 
+	    && g.passCones[2] == false) {
+	cones[2]->setColor(1.0, 1.0, 1.0);
+	g.conecount++;
+	g.passCones[2] = true;
+    } 
 
-	if (kart->pos[2] >= cones[4]->pos[2] && g.passCones[3] == true && g.passCones[4] == false) {
-		cones[4]->setColor(1.0, 1.0, 1.0);
-		g.conecount++;
-		g.passCones[4] = true;
-	}
+    if (kart->pos[0] >= cones[3]->pos[0] && kart->pos[2] >= cones[3]->pos[2] && g.passCones[2] == true
+	    && g.passCones[3] == false) {
+	cones[3]->setColor(1.0, 1.0, 1.0);
+	g.conecount++;
+	g.passCones[3] = true;
+    }
 
-	if (kart->pos[2] >= cones[5]->pos[2] && g.passCones[4] == true && g.passCones[5] == false) {
-		cones[5]->setColor(1.0, 1.0, 1.0);
-		g.conecount++;
-		g.passCones[5] = true;
-	}
+    if (kart->pos[2] >= cones[4]->pos[2] && g.passCones[3] == true && g.passCones[4] == false) {
+	cones[4]->setColor(1.0, 1.0, 1.0);
+	g.conecount++;
+	g.passCones[4] = true;
+    }
+
+    if (kart->pos[2] >= cones[5]->pos[2] && g.passCones[4] == true && g.passCones[5] == false) {
+	cones[5]->setColor(1.0, 1.0, 1.0);
+	g.conecount++;
+	g.passCones[5] = true;
+    }
 
 
 }
@@ -1175,9 +1216,12 @@ void render(void)
 	for (int i = 0; i < 10; i++) {
 		cones[i]->draw();
 	}
+	/*for (int i = 0; i < 180; i++) {
+		block[i]->draw();
+	}*/
 	track->draw();
 	finish->draw(); 
-	//bowser->draw();
+	bowser->draw();
 	kart->draw();
 	//renderShadows();
 	//
@@ -1206,15 +1250,7 @@ void render(void)
 	ggprint8b(&r, 16, 0xFFFFFFFF, "x: %f", g.cx);
 	ggprint8b(&r, 16, 0xFFFFFFFF, "y: %f", g.cy);
 	ggprint8b(&r, 16, 0xFFFFFFFF, "z: %f", g.cz);
-	ggprint8b(&r, 16, 0xFFFFFFFF, "tri0x: %f", track->vert[track->face[0][0]][0]);
-	ggprint8b(&r, 16, 0xFFFFFFFF, "tri0y: %f", track->vert[track->face[0][0]][1]);
-	ggprint8b(&r, 16, 0xFFFFFFFF, "tri0z: %f", track->vert[track->face[0][0]][2]);
-	ggprint8b(&r, 16, 0xFFFFFFFF, "tri1x: %f", track->vert[track->face[0][1]][0]);
-	ggprint8b(&r, 16, 0xFFFFFFFF, "tri1y: %f", track->vert[track->face[0][1]][1]);
-	ggprint8b(&r, 16, 0xFFFFFFFF, "tri1z: %f", track->vert[track->face[0][1]][2]);
-	ggprint8b(&r, 16, 0xFFFFFFFF, "tri2x: %f", track->vert[track->face[0][2]][0]);
-	ggprint8b(&r, 16, 0xFFFFFFFF, "tri2y: %f", track->vert[track->face[0][2]][1]);
-	ggprint8b(&r, 16, 0xFFFFFFFF, "tri2z: %f", track->vert[track->face[0][2]][2]);
+	ggprint8b(&r, 16, 0xFFFFFFFF, "dist: %f", g.dist);
 	glPopAttrib();
 }
 
