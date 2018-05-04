@@ -280,7 +280,7 @@ class Object {
 			VecMake(f[0], f[2], f[1], faceText[i]);
 		}
 		void applyGravity() {
-			pos[1] -= g.gravity;
+			pos[1] -= g.gravity * 13.5f;
 		}
 		void translate(Flt x, Flt y, Flt z) {
 			pos[0] += x;
@@ -1263,11 +1263,11 @@ void callControls() {
 	if (g.keypress[XK_w]) {
 		kart->vel[0] += 0.002;
 		kart->vel[2] += 0.002;
-		if (kart->vel[0] >= 0.3) {
-			kart->vel[0] = 0.3;
+		if (kart->vel[0] >= 1.0) {
+			kart->vel[0] = 1.0;
 		}
-		if (kart->vel[2] >= 0.3) {
-			kart->vel[2] = 0.3;
+		if (kart->vel[2] >= 1.0) {
+			kart->vel[2] = 1.0;
 		}
 		kart->pos[0] += kart->dir[0] * kart->vel[0];
 		kart->pos[2] += kart->dir[2] * kart->vel[2];
