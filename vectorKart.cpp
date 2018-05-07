@@ -18,6 +18,7 @@
 #include "fonts.h"
 #include <iostream>
 #include <time.h>
+#include </usr/include/AL/alut.h>
 using namespace std;
 
 //some defined macros
@@ -54,6 +55,12 @@ using namespace std;
 	a[0]=MY_INFINITY*(b[0]-g.lightPosition[0])+g.lightPosition[0];\
 a[1]=MY_INFINITY*(b[1]-g.lightPosition[1])+g.lightPosition[1];\
 a[2]=MY_INFINITY*(b[2]-g.lightPosition[2])+g.lightPosition[2]
+
+//sound stuff
+#define TOTALSOUNDS 4
+ALuint alSource[TOTALSOUNDS];
+ALuint alBuffer[TOTALSOUNDS];
+float pitch;
 
 Display *dpy;
 Window win;
@@ -152,6 +159,7 @@ class Texture {
 class Global {
 	public:
 		int bestLap;
+		int currentLapTime;
 		bool drawCircle;
 		int done;
 		int renderCount;
@@ -183,7 +191,7 @@ class Global {
 			drawCircle = false;
 			radius = 3.0;
 			lapcount = 0;
-			conecount;
+			conecount = 0;
 			for(int i = 0; i< 10; i++) {
 				passCones[i] = false;
 			}
@@ -196,6 +204,7 @@ class Global {
 			timing = false;
 			crash = false;
 			bestLap = 999;
+			currentLapTime = 0;
 			cx = 0.0;
 			cy = 0.0;
 			cz = 0.0;
@@ -413,12 +422,85 @@ class Object {
 		}
 } *track, *kart, *bowser, *finish, *cones[10], *block[3];
 
+void initialize_sounds ()
+{
+    alutInit(0, NULL);
+    if (alGetError() != AL_NO_ERROR) {
+        cout << "OPENAL ERROR" << endl;
+        return;
+    }
+    alGetError();
+    float vec[6] = {0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f};
+    alListener3f(AL_POSITION, 0.0f, 0.0f, 0.0f);
+    alListenerfv(AL_ORIENTATION, vec);
+    alListenerf(AL_GAIN, 1.0f);
+
+    //add sound sources here
+    alBuffer[0] = alutCreateBufferFromFile("./audio/mariostart.wav");
+    alBuffer[1] = alutCreateBufferFromFile("./audio/newbest.wav");
+    alBuffer[2] = alutCreateBufferFromFile("./audio/stage.wav");
+    alBuffer[3] = alutCreateBufferFromFile("./audio/engine.wav");
+
+    alGenSources(TOTALSOUNDS, alSource);
+
+    //link buffers here
+    alSourcei(alSource[0], AL_BUFFER, alBuffer[0]);
+    alSourcei(alSource[1], AL_BUFFER, alBuffer[1]);
+    alSourcei(alSource[2], AL_BUFFER, alBuffer[2]);
+    alSourcei(alSource[3], AL_BUFFER, alBuffer[3]);
+}
+
+void play_sound (int track, float pitch, bool loop)
+{
+    alSourcef(alSource[track], AL_GAIN, 1.0f);
+    alSourcef(alSource[track], AL_PITCH, pitch);
+    alSourcei(alSource[track], AL_LOOPING, loop);
+    if (alGetError() != AL_NO_ERROR) {
+        cout << "OPENAL ERROR" << endl;
+        return;
+    }
+    alSourcePlay(alSource[track]);
+}
+
+void play_sound (int track, float pitch, bool loop, float gain)
+{
+    alSourcef(alSource[track], AL_GAIN, gain);
+    alSourcef(alSource[track], AL_PITCH, pitch);
+    alSourcei(alSource[track], AL_LOOPING, loop);
+    if (alGetError() != AL_NO_ERROR) {
+        cout << "OPENAL ERROR" << endl;
+        return;
+    }
+    alSourcePlay(alSource[track]);
+}
+
+
+void cleanup_sounds () 
+{
+    for (int i = 0; i < TOTALSOUNDS; i++) {
+        alDeleteSources(1, &alSource[i]);
+    }
+    for (int i = 0; i < TOTALSOUNDS; i++) {
+        alDeleteBuffers(1, &alBuffer[i]);
+    }
+    ALCcontext *Context = alcGetCurrentContext();
+    ALCdevice *Device = alcGetContextsDevice(Context);
+    alcMakeContextCurrent(NULL);
+    alcDestroyContext(Context);
+    alcCloseDevice(Device);
+    return;
+}
+
+
+
 int main(void)
 {
 	g.done=0;
+	initialize_sounds();
 	initXWindows();
 	init_opengl();
 	init();
+	play_sound(2, 1.0f, true);
 	clock_gettime(CLOCK_REALTIME, &g.renderStart);
 	while (g.done == 0) {
 		while (XPending(dpy)) {
@@ -481,7 +563,7 @@ void initXWindows(void)
 	Window root = DefaultRootWindow(dpy);
 	XGrabKeyboard(dpy, root, False,
 			GrabModeAsync, GrabModeAsync, CurrentTime);
-	//fullscreen = 1;
+	fullscreen = 1;
 	XVisualInfo *vi = glXChooseVisual(dpy, 0, att);
 	if (vi == NULL) {
 		printf("\n\tno appropriate visual found\n\n");
@@ -1108,6 +1190,7 @@ void physics(void)
 		clock_gettime(CLOCK_REALTIME, &g.lapTime);
         double d = timeDiff(&g.lapStart, &g.lapTime);
         if (d < g.bestLap) {
+			play_sound(1, 1.0f, false);
 			g.bestLap = d;
 		}
 		clock_gettime(CLOCK_REALTIME, &g.lapStart);
@@ -1116,6 +1199,11 @@ void physics(void)
 			g.passCones[i] = false;
 		}
 	}
+	
+	//update current lap time
+	clock_gettime(CLOCK_REALTIME, &g.lapTime);
+	double currentLap = timeDiff(&g.lapStart, &g.lapTime);
+	g.currentLapTime = currentLap;
 
 
 }
@@ -1263,23 +1351,25 @@ void render(void)
 	ggprint8b(&r, 16, 0x00000000, "W -> forward");
 	ggprint8b(&r, 16, 0x00000000, "S -> backwards");
 	ggprint8b(&r, 16, 0x00000000, "Arrow Keys -> right/left");
-	ggprint8b(&r, 16, 0xFFFFFFFF, "kart x: %f", kart->pos[0]);
-	ggprint8b(&r, 16, 0xFFFFFFFF, "kart y: %f", kart->pos[1]);
-	ggprint8b(&r, 16, 0xFFFFFFFF, "kart z: %f", kart->pos[2]);
+	//ggprint8b(&r, 16, 0xFFFFFFFF, "kart x: %f", kart->pos[0]);
+	//ggprint8b(&r, 16, 0xFFFFFFFF, "kart y: %f", kart->pos[1]);
+	//ggprint8b(&r, 16, 0xFFFFFFFF, "kart z: %f", kart->pos[2]);
 
 	//fps counter
 	ggprint8b(&r, 16, 0xFFFFFFFF, "fps: %i", g.fps);
-	ggprint8b(&r, 16, 0xFFFFFFFF, "conecount: %i", g.conecount);
-	ggprint8b(&r, 16, 0xFFFFFFFF, "crash: %i", g.crash);
-	ggprint8b(&r, 16, 0xFFFFFFFF, "x: %f", g.cx);
-	ggprint8b(&r, 16, 0xFFFFFFFF, "y: %f", g.cy);
-	ggprint8b(&r, 16, 0xFFFFFFFF, "z: %f", g.cz);
-	ggprint8b(&r, 16, 0xFFFFFFFF, "dist: %f", g.dist);
-	ggprint8b(&r, 16, 0xFFFFFFFF, "Lap Time: %i", g.bestLap);
+	//ggprint8b(&r, 16, 0xFFFFFFFF, "conecount: %i", g.conecount);
+	//ggprint8b(&r, 16, 0xFFFFFFFF, "crash: %i", g.crash);
+	//ggprint8b(&r, 16, 0xFFFFFFFF, "x: %f", g.cx);
+	//ggprint8b(&r, 16, 0xFFFFFFFF, "y: %f", g.cy);
+	//ggprint8b(&r, 16, 0xFFFFFFFF, "z: %f", g.cz);
+	//ggprint8b(&r, 16, 0xFFFFFFFF, "dist: %f", g.dist);
+	ggprint8b(&r, 16, 0xFFFFFFFF, "Current Lap Time: %i", g.currentLapTime);
+	ggprint8b(&r, 16, 0xFFFFFFFF, "Best Lap Time: %i", g.bestLap);
 	glPopAttrib();
 }
 
 void callControls() {
+	play_sound(3, kart->vel[0], false, 0.8f);
 	//exit game
 	if (g.keypress[XK_Escape]) {
 		g.done = 1;
@@ -1287,6 +1377,7 @@ void callControls() {
 	//drive forward
 	if (g.keypress[XK_w]) {
 		if (!g.timing) {
+			play_sound(0, 1.0f, false);
 			g.timing = true;
 			clock_gettime(CLOCK_REALTIME, &g.lapStart);
         	//double d = timeDiff(&g.renderStart, &g.renderTime);
