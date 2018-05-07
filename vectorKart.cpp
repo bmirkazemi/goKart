@@ -151,7 +151,7 @@ class Texture {
 
 class Global {
 	public:
-		
+		int bestLap;
 		bool drawCircle;
 		int done;
 		int renderCount;
@@ -167,6 +167,7 @@ class Global {
 		bool passCones[10];
 		bool shadows;
 		bool crash;
+		bool timing;
 		Matrix m;
 		int lapcount;
 		float radius;
@@ -177,9 +178,10 @@ class Global {
 		int sorting;
 		int billboarding;
 		struct timespec renderStart, renderTime;
+		struct timespec lapStart, lapTime;
 		Global() {
 			drawCircle = false;
-		    radius = 3.0;
+			radius = 3.0;
 			lapcount = 0;
 			conecount;
 			for(int i = 0; i< 10; i++) {
@@ -191,7 +193,9 @@ class Global {
 			}
 			renderCount = 0;
 			shadows = true;
+			timing = false;
 			crash = false;
+			bestLap = 999;
 			cx = 0.0;
 			cy = 0.0;
 			cz = 0.0;
@@ -812,33 +816,33 @@ Flt VecNormalize(Vec vec) {
 
 int pointInTriangle(Vec a, Vec b, Vec c, Vec p, Flt *u, Flt *v)
 {
-    //source:
-    //http://blogs.msdn.com/b/rezanour/archive/2011/08/07/
-    //
-    Vec cross0,cross1,cross2;
-    Vec ba,ca,pa;
-    vecSub(b,a,ba);
-    vecSub(c,a,ca);
-    vecSub(p,a,pa);
-    //This is a half-space test
-    vecCrossProduct(ca,pa,cross1);
-    vecCrossProduct(ca,ba,cross0);
-    if (vecDotProduct(cross0, cross1) < 0.0)
-        return 0;
-    //This is a half-space test
-    vecCrossProduct(ba,pa,cross2);
-    vecCrossProduct(ba,ca,cross0);
-    if (vecDotProduct(cross0, cross2) < 0.0)
-        return 0;
-    //Point is within 2 half-spaces
-    //Get area proportions
-    //Area is actually length/2
-    Flt areaABC = vecLength(cross0);
-    Flt areaV = vecLength(cross1);
-    Flt areaU = vecLength(cross2);
-    *u = areaU / areaABC;
-    *v = areaV / areaABC;
-    return (*u >= 0.0 && *v >= 0.0 && *u + *v <= 1.0);
+	//source:
+	//http://blogs.msdn.com/b/rezanour/archive/2011/08/07/
+	//
+	Vec cross0,cross1,cross2;
+	Vec ba,ca,pa;
+	vecSub(b,a,ba);
+	vecSub(c,a,ca);
+	vecSub(p,a,pa);
+	//This is a half-space test
+	vecCrossProduct(ca,pa,cross1);
+	vecCrossProduct(ca,ba,cross0);
+	if (vecDotProduct(cross0, cross1) < 0.0)
+		return 0;
+	//This is a half-space test
+	vecCrossProduct(ba,pa,cross2);
+	vecCrossProduct(ba,ca,cross0);
+	if (vecDotProduct(cross0, cross2) < 0.0)
+		return 0;
+	//Point is within 2 half-spaces
+	//Get area proportions
+	//Area is actually length/2
+	Flt areaABC = vecLength(cross0);
+	Flt areaV = vecLength(cross1);
+	Flt areaU = vecLength(cross2);
+	*u = areaU / areaABC;
+	*v = areaV / areaABC;
+	return (*u >= 0.0 && *v >= 0.0 && *u + *v <= 1.0);
 }
 
 Flt vecDotProduct(Vec v0, Vec v1)
@@ -936,69 +940,69 @@ void trans_vector(Matrix mat, const Vec in, Vec out)
 void joyStickControls(Joystick *joystick) {
 	//JoystickEvent event;
 
-    if (!joystick->isFound()) {
-        //printf("open failed.\n");
+	if (!joystick->isFound()) {
+		//printf("open failed.\n");
 	}
-	
-	 /*if (joystick->sample(&event) && event.isAxis()) {
-		 if (event.number == 0) {\
-			printf("Axis %u is at position %d\n", event.number, event.value);
-			kart->vel[0] += 0.002;
-			kart->vel[2] += 0.002;
-			if (kart->vel[0] >= 1.0) {
-				kart->vel[0] = 1.0;
-			}
-			if (kart->vel[2] >= 1.0) {
-				kart->vel[2] = 1.0;
-			}
-			kart->pos[0] += kart->dir[0] * kart->vel[0];
-			kart->pos[2] += kart->dir[2] * kart->vel[2];
-		} else {
-			kart->vel[0] -= 0.01;
-			kart->vel[2] -= 0.01;
-			if (kart->vel[0] <= 0) {
-				kart->vel[0] = 0;
-			}
-			if (kart->vel[2] <= 0) {
-				kart->vel[2] = 0;
-			}
-			kart->pos[0] += kart->dir[0] * kart->vel[0];
-			kart->pos[2] += kart->dir[2] * kart->vel[2];
-		}
-	 }*/
+
+	/*if (joystick->sample(&event) && event.isAxis()) {
+	  if (event.number == 0) {\
+	  printf("Axis %u is at position %d\n", event.number, event.value);
+	  kart->vel[0] += 0.002;
+	  kart->vel[2] += 0.002;
+	  if (kart->vel[0] >= 1.0) {
+	  kart->vel[0] = 1.0;
+	  }
+	  if (kart->vel[2] >= 1.0) {
+	  kart->vel[2] = 1.0;
+	  }
+	  kart->pos[0] += kart->dir[0] * kart->vel[0];
+	  kart->pos[2] += kart->dir[2] * kart->vel[2];
+	  } else {
+	  kart->vel[0] -= 0.01;
+	  kart->vel[2] -= 0.01;
+	  if (kart->vel[0] <= 0) {
+	  kart->vel[0] = 0;
+	  }
+	  if (kart->vel[2] <= 0) {
+	  kart->vel[2] = 0;
+	  }
+	  kart->pos[0] += kart->dir[0] * kart->vel[0];
+	  kart->pos[2] += kart->dir[2] * kart->vel[2];
+	  }
+	  }*/
 }
 
 void physics(void)
 {
 	joyStickControls(&joystick1);
 	//apply gravity to kart
-    if (!g.crash) {
-	kart->applyGravity();
+	if (!g.crash) {
+		kart->applyGravity();
 
-	//bowser->applyGravity();
-    } else {
+		//bowser->applyGravity();
+	} else {
 		kart->pos[1] = track->pos[1];
 	}
-    //if(bowser->pos[1] <= track->pos[1]) {
+	//if(bowser->pos[1] <= track->pos[1]) {
 	//bowser->pos[1] = track->pos[1];
-    //}
+	//}
 	g.crash = false;
-    for (int i=0; i<track->nfaces; i++) {
-		
+	for (int i=0; i<track->nfaces; i++) {
+
 		/*old code
-		g.cx = g.cy = g.cz = g.vx = g.vy = g.vz = g.dist = 0.0f;
-		cout << i << endl;
-		g.cz = track->vert[track->face[i][0]][0] + track->vert[track->face[i][1]][0] + track->vert[track->face[i][2]][0]; 
-		g.cy = track->vert[track->face[i][0]][1] + track->vert[track->face[i][1]][1] + track->vert[track->face[i][2]][1]; 
-		g.cx = track->vert[track->face[i][0]][2] + track->vert[track->face[i][1]][2] + track->vert[track->face[i][2]][2]; 
-		g.cx /= 3;
-		g.cy /= 3;
-		g.cy -= 2;
-		g.cz /= 3;
-		g.cz = -g.cz;
-		g.vx = g.cx - kart->pos[0];
-		g.vy = g.cy - kart->pos[1];
-		g.vz = g.cz - kart->pos[2];
+		  g.cx = g.cy = g.cz = g.vx = g.vy = g.vz = g.dist = 0.0f;
+		  cout << i << endl;
+		  g.cz = track->vert[track->face[i][0]][0] + track->vert[track->face[i][1]][0] + track->vert[track->face[i][2]][0]; 
+		  g.cy = track->vert[track->face[i][0]][1] + track->vert[track->face[i][1]][1] + track->vert[track->face[i][2]][1]; 
+		  g.cx = track->vert[track->face[i][0]][2] + track->vert[track->face[i][1]][2] + track->vert[track->face[i][2]][2]; 
+		  g.cx /= 3;
+		  g.cy /= 3;
+		  g.cy -= 2;
+		  g.cz /= 3;
+		  g.cz = -g.cz;
+		  g.vx = g.cx - kart->pos[0];
+		  g.vy = g.cy - kart->pos[1];
+		  g.vz = g.cz - kart->pos[2];
 		//g.vx = kart->pos[0] - g.cx;
 		//g.vy = kart->pos[1] - g.cy;
 		//g.vz = kart->pos[2] - g.cz;
@@ -1006,14 +1010,14 @@ void physics(void)
 		//vecMake(g.cx, g.cy, g.cz, circle->pos);
 		//circle->radius = g.radius;
 		if (g.drawCircle == false) {
-			block[i]->translate(g.cx, g.cy, g.cz);
+		block[i]->translate(g.cx, g.cy, g.cz);
 		}
 		cout << g.dist << "==============================>>>>>>>" << endl;
 		if (g.dist < (kart->radius + g.radius)) {
-			g.crash = true;
-			break;
-			//} else {
-			//g.crash = false;
+		g.crash = true;
+		break;
+		//} else {
+		//g.crash = false;
 		}*/
 		Vec a, b, c;
 		VecMake(track->vert[track->face[i][0]][0], track->vert[track->face[i][0]][1], track->vert[track->face[i][0]][2], c);
@@ -1023,49 +1027,95 @@ void physics(void)
 		if (pointInTriangle(c, b, a, kart->pos, &u, &v)) {
 			g.crash = true;
 		}
-    }
-    
-    //call keypress functions activated
-    callControls();
+	}
 
-    //lap system
-    if (kart->pos[2] <= cones[0]->pos[2] && g.passCones[0] == false) {
-	cones[0]->setColor(1.0, 1.0, 1.0);
-	g.conecount++;
-	g.passCones[0] = true;
-    }
+	if (kart->pos[1] <= -15.0) {
+		int checkpoint = g.conecount - 1;
+		if ( checkpoint == -1) 
+			checkpoint = 9;
+		kart->pos[0] = cones[checkpoint]->pos[0];
+		kart->pos[1] = cones[checkpoint]->pos[1];
+		kart->pos[2] = cones[checkpoint]->pos[2];
+	}
 
-    if (kart->pos[2] <= cones[1]->pos[2] && g.passCones[0] == true && g.passCones[1] == false) {
-	cones[1]->setColor(1.0, 1.0, 1.0);
-	g.conecount++;
-	g.passCones[1] = true;
-    }
 
-    if (kart->pos[0] >= cones[2]->pos[0] && kart->pos[2] <= cones[2]->pos[2] + 3.0f && g.passCones[1] == true 
-	    && g.passCones[2] == false) {
-	cones[2]->setColor(1.0, 1.0, 1.0);
-	g.conecount++;
-	g.passCones[2] = true;
-    } 
+	//call keypress functions activated
+	callControls();
 
-    if (kart->pos[0] >= cones[3]->pos[0] && kart->pos[2] >= cones[3]->pos[2] && g.passCones[2] == true
-	    && g.passCones[3] == false) {
-	cones[3]->setColor(1.0, 1.0, 1.0);
-	g.conecount++;
-	g.passCones[3] = true;
-    }
+	//lap system
+	if (kart->pos[2] <= cones[0]->pos[2] && g.passCones[0] == false) {
+		cones[0]->setColor(1.0, 1.0, 1.0);
+		g.conecount++;
+		g.passCones[0] = true;
+	}
 
-    if (kart->pos[2] >= cones[4]->pos[2] && g.passCones[3] == true && g.passCones[4] == false) {
-	cones[4]->setColor(1.0, 1.0, 1.0);
-	g.conecount++;
-	g.passCones[4] = true;
-    }
+	if (kart->pos[2] <= cones[1]->pos[2] && g.passCones[0] == true && g.passCones[1] == false) {
+		cones[1]->setColor(1.0, 1.0, 1.0);
+		g.conecount++;
+		g.passCones[1] = true;
+	}
 
-    if (kart->pos[2] >= cones[5]->pos[2] && g.passCones[4] == true && g.passCones[5] == false) {
-	cones[5]->setColor(1.0, 1.0, 1.0);
-	g.conecount++;
-	g.passCones[5] = true;
-    }
+	if (kart->pos[0] >= cones[2]->pos[0] && kart->pos[2] <= cones[2]->pos[2] + 3.0f 
+			&& g.passCones[1] == true && g.passCones[2] == false) {
+		cones[2]->setColor(1.0, 1.0, 1.0);
+		g.conecount++;
+		g.passCones[2] = true;
+	} 
+
+	if (kart->pos[0] >= cones[3]->pos[0] && kart->pos[2] >= cones[3]->pos[2] 
+			&& g.passCones[2] == true && g.passCones[3] == false) {
+		cones[3]->setColor(1.0, 1.0, 1.0);
+		g.conecount++;
+		g.passCones[3] = true;
+	}
+
+	if (kart->pos[2] >= cones[4]->pos[2] && g.passCones[3] == true && g.passCones[4] == false) {
+		cones[4]->setColor(1.0, 1.0, 1.0);
+		g.conecount++;
+		g.passCones[4] = true;
+	}
+
+	if (kart->pos[2] >= cones[5]->pos[2] && g.passCones[4] == true && g.passCones[5] == false) {
+		cones[5]->setColor(1.0, 1.0, 1.0);
+		g.conecount++;
+		g.passCones[5] = true;
+	}
+	if (kart->pos[0] >= cones[6]->pos[0] && kart->pos[2] >= cones[6]->pos[2] 
+			&& g.passCones[5] == true && g.passCones[6] == false) {
+		cones[6]->setColor(1.0, 1.0, 1.0);
+		g.conecount++;
+		g.passCones[6] = true;
+	}
+	if (kart->pos[0] <= cones[7]->pos[0] &&  kart->pos[2] >= cones[7]->pos[2] 
+			&& g.passCones[6] == true && g.passCones[7] == false) {
+		cones[7]->setColor(1.0, 1.0, 1.0);
+		g.conecount++;
+		g.passCones[7] = true;
+	}
+	if (kart->pos[0] <= cones[8]->pos[0] && g.passCones[7] == true && g.passCones[8] == false) {
+		cones[8]->setColor(1.0, 1.0, 1.0);
+		g.conecount++;
+		g.passCones[8] = true;
+	}
+	if (kart->pos[2] <= cones[9]->pos[2] && g.passCones[8] == true && g.passCones[9] == false) {
+		cones[9]->setColor(1.0, 1.0, 1.0);
+		g.conecount++;
+		g.passCones[9] = true;
+	}
+	
+	if (g.conecount == 10 && kart->pos[2] <= finish->pos[2] ) {
+		g.conecount = 0;
+		clock_gettime(CLOCK_REALTIME, &g.lapTime);
+        double d = timeDiff(&g.lapStart, &g.lapTime);
+        if (d < g.bestLap) {
+			g.bestLap = d;
+		}
+		clock_gettime(CLOCK_REALTIME, &g.lapStart);
+		for (int i=0; i<10; i++) {
+			cones[i]->setColor(0.9, 0, 0.9);
+			g.passCones[i] = false;
+		}
+	}
 
 
 }
@@ -1225,6 +1275,7 @@ void render(void)
 	ggprint8b(&r, 16, 0xFFFFFFFF, "y: %f", g.cy);
 	ggprint8b(&r, 16, 0xFFFFFFFF, "z: %f", g.cz);
 	ggprint8b(&r, 16, 0xFFFFFFFF, "dist: %f", g.dist);
+	ggprint8b(&r, 16, 0xFFFFFFFF, "Lap Time: %i", g.bestLap);
 	glPopAttrib();
 }
 
@@ -1235,6 +1286,15 @@ void callControls() {
 	}
 	//drive forward
 	if (g.keypress[XK_w]) {
+		if (!g.timing) {
+			g.timing = true;
+			clock_gettime(CLOCK_REALTIME, &g.lapStart);
+        	//double d = timeDiff(&g.renderStart, &g.renderTime);
+        	//if (d >= 1.0) {
+            //g.fps = g.renderCount;
+            //g.renderCount = 0;
+            //timeCopy(&g.renderStart, &g.renderTime);
+		}
 		kart->vel[0] += 0.002;
 		kart->vel[2] += 0.002;
 		if (kart->vel[0] >= 1.0) {
