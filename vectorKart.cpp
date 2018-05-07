@@ -3,6 +3,7 @@
 // date: Spring 2018
 // purpose: 3d game similar to mario kart
 //
+#include "joystick.h"
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -57,6 +58,8 @@ a[2]=MY_INFINITY*(b[2]-g.lightPosition[2])+g.lightPosition[2]
 Display *dpy;
 Window win;
 GLXContext glc;
+
+Joystick joystick1("/dev/input/js0");
 
 typedef float Flt;
 typedef Flt Vec[3];
@@ -148,7 +151,7 @@ class Texture {
 
 class Global {
 	public:
-
+		
 		bool drawCircle;
 		int done;
 		int renderCount;
@@ -173,7 +176,6 @@ class Global {
 		int circling;
 		int sorting;
 		int billboarding;
-		struct timespec smokeStart, smokeTime;
 		struct timespec renderStart, renderTime;
 		Global() {
 			drawCircle = false;
@@ -344,13 +346,7 @@ class Object {
 				}
 				glPushMatrix();
 				glBegin(GL_TRIANGLES);
-				if (j == 0) {
-				    Vec colortest;
-				    VecMake(1.0, 1.0, 1.0, colortest); 
-				    glColor3fv(colortest);
-				} else {
-				    glColor3fv(color);
-				}
+				glColor3fv(color);
 				glNormal3fv(norm);
 				glVertex3fv(tv[0]);
 				glVertex3fv(tv[1]);
@@ -411,7 +407,7 @@ class Object {
 				glPopMatrix();
 			}
 		}
-} *track, *kart, *bowser, *block[180], *finish, *cones[10];
+} *track, *kart, *bowser, *finish, *cones[10], *block[3];
 
 int main(void)
 {
@@ -525,9 +521,7 @@ void init(void)
 	//track
 	Object *buildModel(const char *mname);
 	track = buildModel("./assets/trackfinal.obj");
-	track->scale(3);
-	track->translate(-1.0, -2, 0);
-	track->rotate(0, 90, 0);
+	track->scale(3.0);
 	track->setColor(0.2,0.2,0.2);
 	//mario
 	Object *buildModel(const char *mname);
@@ -547,20 +541,9 @@ void init(void)
 	Object *buildModel(const char *mname);
 	finish = buildModel("./assets/finishline.obj");
 	finish->scale(1);
-	finish->translate(-1.0, -2, 0);
+	finish->translate(-1.0, 0, 0);
 	finish->rotate(0, 90, 0);
 	finish->setColor (0.9, 0.9, 0.9);
-
-	//circle points
-	for (int i = 0; i < 180; i++) {
-		Object *buildModel(const char *mname);
-		block[i] = buildModel("./assets/bowser/bkart.obj");
-		block[i]->scale(0.3);
-
-		block[i]->rotate(0, 180, 0);
-		block[i]->translate(-0.5, 0, -3.0);
-		block[i]->setColor(.4,.2,.9);
-	}
 
 	//cones
 	for (int i = 0; i < 10; i++) {
@@ -570,31 +553,31 @@ void init(void)
 		cones[i]->setColor (0.9, 0, 0.9);
 	}
 
-	cones[0]->translate(-1.8, -2, -15.0);
+	cones[0]->translate(-1.8, 0, -15.0);
 	cones[0]->rotate(0, 0, 0);
 
-	cones[1]->translate(-13.5, -2, -40.0);
+	cones[1]->translate(-13.5, 0, -40.0);
 	cones[1]->rotate(0, 30, 0);
 
-	cones[2]->translate(0, -2, -102.5);
+	cones[2]->translate(0, 0, -102.5);
 	cones[2]->rotate(0, 90, 0);
 
-	cones[3]->translate(41, -2, -85);
+	cones[3]->translate(41, 0, -85);
 	cones[3]->rotate(0,30,0);
 
-	cones[4]->translate(70, -2, -22);
+	cones[4]->translate(70, 0, -22);
 
-	cones[5]->translate(70, -2, 94);
+	cones[5]->translate(70, 0, 94);
 
-	cones[6]->translate(88, -2, 127);
+	cones[6]->translate(88, 0, 127);
 	cones[6]->rotate(0,60,0);
 
-	cones[7]->translate(100, -2, 172);
+	cones[7]->translate(100, 0, 172);
 
-	cones[8]->translate(52, -2, 191);
+	cones[8]->translate(52, 0, 191);
 	cones[8]->rotate(0,85,0);
 
-	cones[9]->translate(-8, -2, 70);
+	cones[9]->translate(-8, 0, 70);
 
 }
 
@@ -796,18 +779,17 @@ Object *buildModel(const char *mname)
 int check_keys(XEvent *e)
 {
 	//Was there input from the keyboard?
-	static int shift = 0;
 	int key = XLookupKeysym(&e->xkey, 0);
 	if (e->type == KeyPress) {
 		g.keypress[key] = 1;
 		if(g.keypress[XK_Shift_R] || g.keypress[XK_Shift_L]) {
-			shift = 1;
+			//shift = 1;
 		}
 	}
 	if (e->type == KeyRelease) {
 		g.keypress[key] = 0;
 		if(g.keypress[XK_Shift_R] || g.keypress[XK_Shift_L]) {
-			shift = 0;
+			//shift = 0;
 		}
 	}
 	return 0;
@@ -859,42 +841,6 @@ int pointInTriangle(Vec a, Vec b, Vec c, Vec p, Flt *u, Flt *v)
     return (*u >= 0.0 && *v >= 0.0 && *u + *v <= 1.0);
 }
 
-/*
-bool pointInTriangle(Vec tri[3], Vec p, Flt *u, Flt *v)
-{
-	//source: http://blogs.msdn.com/b/rezanour/archive/2011/08/07/
-	//This function determines if point p is inside triangle tri.
-	//   step 1: 3D half-space tests
-	//   step 2: find barycentric coordinates
-	//
-	Vec cross0, cross1, cross2;
-	Vec ba, ca, pa;
-	//setup sub-triangles
-	vecSub(tri[1], tri[0], ba);
-	vecSub(tri[2], tri[0], ca);
-	vecSub(p, tri[0], pa);
-	//This is a half-space test
-	vecCrossProduct(ca, pa, cross1);
-	vecCrossProduct(ca, ba, cross0);
-	if (vecDotProduct(cross0, cross1) < 0.0)
-		return 0;
-	//This is a half-space test
-	vecCrossProduct(ba,pa,cross2);
-	vecCrossProduct(ba,ca,cross0);
-	if (vecDotProduct(cross0, cross2) < 0.0)
-		return 0;
-	//Point is within 2 half-spaces
-	//Get area proportions
-	//Area is actually length/2, but we just care about the relationship.
-	Flt areaABC = vecLength(cross0);
-	Flt areaV = vecLength(cross1);
-	Flt areaU = vecLength(cross2);
-	*u = areaU / areaABC;
-	*v = areaV / areaABC;
-	return (*u >= 0.0 && *v >= 0.0 && *u + *v <= 1.0);
-}
-*/
-
 Flt vecDotProduct(Vec v0, Vec v1)
 {
 	return (v0[0]*v1[0] + v0[1]*v1[1] + v0[2]*v1[2]);
@@ -927,10 +873,6 @@ void vecScale(Vec v, Flt scale) {
 
 void yy_transform(const Vec rotate, Matrix a)
 {
-	//This function applies a rotation to a matrix.
-	//Call this function first, then call trans_vector() to apply the
-	//rotations to an object or vertex.
-	//
 	if (rotate[0] != 0.0f) {
 		Flt ct = cos(rotate[0]), st = sin(rotate[0]);
 		Flt t10 = ct*a[1][0] - st*a[2][0];
@@ -991,8 +933,44 @@ void trans_vector(Matrix mat, const Vec in, Vec out)
 	out[2] = f2;
 }
 
+void joyStickControls(Joystick *joystick) {
+	//JoystickEvent event;
+
+    if (!joystick->isFound()) {
+        //printf("open failed.\n");
+	}
+	
+	 /*if (joystick->sample(&event) && event.isAxis()) {
+		 if (event.number == 0) {\
+			printf("Axis %u is at position %d\n", event.number, event.value);
+			kart->vel[0] += 0.002;
+			kart->vel[2] += 0.002;
+			if (kart->vel[0] >= 1.0) {
+				kart->vel[0] = 1.0;
+			}
+			if (kart->vel[2] >= 1.0) {
+				kart->vel[2] = 1.0;
+			}
+			kart->pos[0] += kart->dir[0] * kart->vel[0];
+			kart->pos[2] += kart->dir[2] * kart->vel[2];
+		} else {
+			kart->vel[0] -= 0.01;
+			kart->vel[2] -= 0.01;
+			if (kart->vel[0] <= 0) {
+				kart->vel[0] = 0;
+			}
+			if (kart->vel[2] <= 0) {
+				kart->vel[2] = 0;
+			}
+			kart->pos[0] += kart->dir[0] * kart->vel[0];
+			kart->pos[2] += kart->dir[2] * kart->vel[2];
+		}
+	 }*/
+}
+
 void physics(void)
 {
+	joyStickControls(&joystick1);
 	//apply gravity to kart
     if (!g.crash) {
 	kart->applyGravity();
@@ -1004,16 +982,10 @@ void physics(void)
     //if(bowser->pos[1] <= track->pos[1]) {
 	//bowser->pos[1] = track->pos[1];
     //}
-
-    //check if kart collided with track
-    //if(kart->pos[1] <= track->pos[1]) {
-//	kart->pos[1] = track->pos[1];
-//}
-    //Flt u,v;
-
 	g.crash = false;
     for (int i=0; i<track->nfaces; i++) {
 		
+		/*old code
 		g.cx = g.cy = g.cz = g.vx = g.vy = g.vz = g.dist = 0.0f;
 		cout << i << endl;
 		g.cz = track->vert[track->face[i][0]][0] + track->vert[track->face[i][1]][0] + track->vert[track->face[i][2]][0]; 
@@ -1042,12 +1014,17 @@ void physics(void)
 			break;
 			//} else {
 			//g.crash = false;
+		}*/
+		Vec a, b, c;
+		VecMake(track->vert[track->face[i][0]][0], track->vert[track->face[i][0]][1], track->vert[track->face[i][0]][2], c);
+		VecMake(track->vert[track->face[i][1]][0], track->vert[track->face[i][1]][1], track->vert[track->face[i][1]][2], b);
+		VecMake(track->vert[track->face[i][2]][0], track->vert[track->face[i][2]][1], track->vert[track->face[i][2]][2], a);
+		Flt u, v;
+		if (pointInTriangle(c, b, a, kart->pos, &u, &v)) {
+			g.crash = true;
 		}
-
     }
-
-		g.drawCircle = true;
-
+    
     //call keypress functions activated
     callControls();
 
@@ -1216,12 +1193,9 @@ void render(void)
 	for (int i = 0; i < 10; i++) {
 		cones[i]->draw();
 	}
-	/*for (int i = 0; i < 180; i++) {
-		block[i]->draw();
-	}*/
 	track->draw();
 	finish->draw(); 
-	bowser->draw();
+	//bowser->draw();
 	kart->draw();
 	//renderShadows();
 	//
