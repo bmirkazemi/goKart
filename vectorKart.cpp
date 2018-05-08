@@ -145,7 +145,7 @@ class Image {
 			unlink(ppmname);
 		}
 };
-Image img[2] = {"./assets/bg1.jpg", "./assets/road.jpg"};
+Image img[2] = {"./assets/bg2.jpg", "./assets/road.jpg"};
 
 class Texture {
 	public:
