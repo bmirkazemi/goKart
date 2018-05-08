@@ -57,15 +57,13 @@ a[1]=MY_INFINITY*(b[1]-g.lightPosition[1])+g.lightPosition[1];\
 a[2]=MY_INFINITY*(b[2]-g.lightPosition[2])+g.lightPosition[2]
 
 //sound stuff
-#define TOTALSOUNDS 6
+#define TOTALSOUNDS 7
 ALuint alSource[TOTALSOUNDS];
 ALuint alBuffer[TOTALSOUNDS];
-float pitch;
 
 Display *dpy;
 Window win;
 GLXContext glc;
-
 Joystick joystick1("/dev/input/js0");
 
 typedef float Flt;
@@ -443,6 +441,7 @@ void initialize_sounds ()
     alBuffer[3] = alutCreateBufferFromFile("./audio/engine.wav");
     alBuffer[4] = alutCreateBufferFromFile("./audio/fall1.wav");
     alBuffer[5] = alutCreateBufferFromFile("./audio/fall2.wav");
+    alBuffer[6] = alutCreateBufferFromFile("./audio/cone.wav");
 
     alGenSources(TOTALSOUNDS, alSource);
 
@@ -453,6 +452,7 @@ void initialize_sounds ()
     alSourcei(alSource[3], AL_BUFFER, alBuffer[3]);
     alSourcei(alSource[4], AL_BUFFER, alBuffer[4]);
     alSourcei(alSource[5], AL_BUFFER, alBuffer[5]);
+    alSourcei(alSource[6], AL_BUFFER, alBuffer[6]);
 }
 
 void play_sound (int track, float pitch, bool loop)
@@ -1110,12 +1110,14 @@ void physics(void)
 	//lap system
 	if (kart->pos[2] <= cones[0]->pos[2] && g.passCones[0] == false) {
 		cones[0]->setColor(1.0, 1.0, 1.0);
+		play_sound(6, 1.0f, false);
 		g.conecount++;
 		g.passCones[0] = true;
 	}
 
 	if (kart->pos[2] <= cones[1]->pos[2] && g.passCones[0] == true && g.passCones[1] == false) {
 		cones[1]->setColor(1.0, 1.0, 1.0);
+		play_sound(6, 1.0f, false);
 		g.conecount++;
 		g.passCones[1] = true;
 	}
@@ -1123,6 +1125,7 @@ void physics(void)
 	if (kart->pos[0] >= cones[2]->pos[0] && kart->pos[2] <= cones[2]->pos[2] + 3.0f 
 			&& g.passCones[1] == true && g.passCones[2] == false) {
 		cones[2]->setColor(1.0, 1.0, 1.0);
+		play_sound(6, 1.0f, false);
 		g.conecount++;
 		g.passCones[2] = true;
 	} 
@@ -1130,45 +1133,53 @@ void physics(void)
 	if (kart->pos[0] >= cones[3]->pos[0] && kart->pos[2] >= cones[3]->pos[2] 
 			&& g.passCones[2] == true && g.passCones[3] == false) {
 		cones[3]->setColor(1.0, 1.0, 1.0);
+		play_sound(6, 1.0f, false);
 		g.conecount++;
 		g.passCones[3] = true;
 	}
 
 	if (kart->pos[2] >= cones[4]->pos[2] && g.passCones[3] == true && g.passCones[4] == false) {
 		cones[4]->setColor(1.0, 1.0, 1.0);
+		play_sound(6, 1.0f, false);
 		g.conecount++;
 		g.passCones[4] = true;
 	}
 
 	if (kart->pos[2] >= cones[5]->pos[2] && g.passCones[4] == true && g.passCones[5] == false) {
 		cones[5]->setColor(1.0, 1.0, 1.0);
+		play_sound(6, 1.0f, false);
 		g.conecount++;
 		g.passCones[5] = true;
 	}
 	if (kart->pos[0] >= cones[6]->pos[0] && kart->pos[2] >= cones[6]->pos[2] 
 			&& g.passCones[5] == true && g.passCones[6] == false) {
 		cones[6]->setColor(1.0, 1.0, 1.0);
+		play_sound(6, 1.0f, false);
 		g.conecount++;
 		g.passCones[6] = true;
 	}
 	if (kart->pos[0] <= cones[7]->pos[0] &&  kart->pos[2] >= cones[7]->pos[2] 
 			&& g.passCones[6] == true && g.passCones[7] == false) {
 		cones[7]->setColor(1.0, 1.0, 1.0);
+		play_sound(6, 1.0f, false);
 		g.conecount++;
 		g.passCones[7] = true;
 	}
 	if (kart->pos[0] <= cones[8]->pos[0] && g.passCones[7] == true && g.passCones[8] == false) {
 		cones[8]->setColor(1.0, 1.0, 1.0);
+		play_sound(6, 1.0f, false);
 		g.conecount++;
 		g.passCones[8] = true;
 	}
 	if (kart->pos[2] <= cones[9]->pos[2] && g.passCones[8] == true && g.passCones[9] == false) {
 		cones[9]->setColor(1.0, 1.0, 1.0);
+		play_sound(6, 1.0f, false);
 		g.conecount++;
 		g.passCones[9] = true;
 	}
 	
 	if (g.conecount == 10 && kart->pos[2] <= finish->pos[2] ) {
+		play_sound(6, 1.0f, false);
 		g.conecount = 0;
 		clock_gettime(CLOCK_REALTIME, &g.lapTime);
         double d = timeDiff(&g.lapStart, &g.lapTime);
@@ -1331,9 +1342,9 @@ void render(void)
 	r.bot = g.yres - 20;
 	r.left = 10;
 	r.center = 0;
-	ggprint8b(&r, 16, 0x00000000, "W -> forward");
-	ggprint8b(&r, 16, 0x00000000, "S -> backwards");
-	ggprint8b(&r, 16, 0x00000000, "Arrow Keys -> right/left");
+	//ggprint8b(&r, 16, 0x00000000, "W -> forward");
+	//ggprint8b(&r, 16, 0x00000000, "S -> backwards");
+	//ggprint8b(&r, 16, 0x00000000, "Arrow Keys -> right/left");
 	//ggprint8b(&r, 16, 0xFFFFFFFF, "kart x: %f", kart->pos[0]);
 	//ggprint8b(&r, 16, 0xFFFFFFFF, "kart y: %f", kart->pos[1]);
 	//ggprint8b(&r, 16, 0xFFFFFFFF, "kart z: %f", kart->pos[2]);
