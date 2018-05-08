@@ -83,6 +83,7 @@ int check_keys(XEvent *e);
 void physics(void);
 void render(void);
 void callControls(void);
+void callControls(Joystick *joystick);
 void vecScale(Vec v, Flt scale);
 void vecSub(Vec v0, Vec v1, Vec dest);
 //bool pointInTriangle(Vec tri[3], Vec p, Flt *u, Flt *v);
@@ -870,6 +871,7 @@ int check_keys(XEvent *e)
 {
 	//Was there input from the keyboard?
 	int key = XLookupKeysym(&e->xkey, 0);
+	printf("key = %i", key);
 	if (e->type == KeyPress) {
 		g.keypress[key] = 1;
 		if(g.keypress[XK_Shift_R] || g.keypress[XK_Shift_L]) {
@@ -1023,44 +1025,8 @@ void trans_vector(Matrix mat, const Vec in, Vec out)
 	out[2] = f2;
 }
 
-void joyStickControls(Joystick *joystick) {
-	//JoystickEvent event;
-
-	if (!joystick->isFound()) {
-		//printf("open failed.\n");
-	}
-
-	/*if (joystick->sample(&event) && event.isAxis()) {
-	  if (event.number == 0) {\
-	  printf("Axis %u is at position %d\n", event.number, event.value);
-	  kart->vel[0] += 0.002;
-	  kart->vel[2] += 0.002;
-	  if (kart->vel[0] >= 1.0) {
-	  kart->vel[0] = 1.0;
-	  }
-	  if (kart->vel[2] >= 1.0) {
-	  kart->vel[2] = 1.0;
-	  }
-	  kart->pos[0] += kart->dir[0] * kart->vel[0];
-	  kart->pos[2] += kart->dir[2] * kart->vel[2];
-	  } else {
-	  kart->vel[0] -= 0.01;
-	  kart->vel[2] -= 0.01;
-	  if (kart->vel[0] <= 0) {
-	  kart->vel[0] = 0;
-	  }
-	  if (kart->vel[2] <= 0) {
-	  kart->vel[2] = 0;
-	  }
-	  kart->pos[0] += kart->dir[0] * kart->vel[0];
-	  kart->pos[2] += kart->dir[2] * kart->vel[2];
-	  }
-	  }*/
-}
-
 void physics(void)
 {
-	joyStickControls(&joystick1);
 	//apply gravity to kart
 	if (!g.crash) {
 		kart->applyGravity();
@@ -1126,13 +1092,19 @@ void physics(void)
 		}
 		if ( checkpoint == -1) 
 			checkpoint = 9;
+			kart->vel[0] = 0.0f;
+			kart->vel[1] = 0.0f;
+			kart->vel[2] = 0.0f; 
 		kart->pos[0] = cones[checkpoint]->pos[0];
 		kart->pos[1] = cones[checkpoint]->pos[1];
 		kart->pos[2] = cones[checkpoint]->pos[2];
 	}
 
 
-	//call keypress functions activated
+	if (joystick1.isFound()) {
+		callControls(&joystick1);
+	}
+	
 	callControls();
 
 	//lap system
@@ -1379,8 +1351,61 @@ void render(void)
 	glPopAttrib();
 }
 
+void callControls(Joystick *joystick) {
+	JoystickEvent event;
+
+	if (!joystick->isFound()) {
+		//printf("open failed.\n");
+	}
+	if (joystick->sample(&event)) {
+		if (event.isButton()) {
+			if (event.number == 1 && event.value == 1) {
+				g.keypress[119] = 1;
+			}
+			if (event.number == 1 && event.value == 0) {
+				g.keypress[119] = 0;
+			}
+		}
+		
+		if (event.isAxis()) {
+			if (event.number == 0 && event.value <= -200) {
+				g.keypress[97] = 1;
+			}
+			if (event.number == 0 && event.value >= -199 && event.value <= 199) {
+				g.keypress[97] = 0;
+				g.keypress[100] = 0;
+			}
+			if (event.number == 0 && event.value >= 200) {
+				g.keypress[100] = 1;
+			}
+		}
+	}
+
+	if (g.keypress[XK_Escape]) {
+		g.done = 1;
+	}
+	
+	//getting last position for the camera
+	kart->nextPos[0] = kart->pos[0] + kart->dir[0];
+	kart->nextPos[1] = kart->pos[1] + kart->dir[1];
+	kart->nextPos[2] = kart->pos[2] + kart->dir[2];
+
+	kart->lastPos[0] = kart->pos[0] - kart->dir[0];
+	kart->lastPos[1] = kart->pos[1] - kart->dir[1] + 0.5f;
+	kart->lastPos[2] = kart->pos[2] - kart->dir[2];
+
+	g.cameraPosition[0] = kart->lastPos[0];
+	g.cameraPosition[1] = kart->lastPos[1];
+	g.cameraPosition[2] = kart->lastPos[2];
+
+}
+	
+	
+	
+
 void callControls() {
 	play_sound(3, kart->vel[0], false, 0.4f);
+	
 	//exit game
 	if (g.keypress[XK_Escape]) {
 		g.done = 1;
