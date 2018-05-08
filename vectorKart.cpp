@@ -57,7 +57,7 @@ a[1]=MY_INFINITY*(b[1]-g.lightPosition[1])+g.lightPosition[1];\
 a[2]=MY_INFINITY*(b[2]-g.lightPosition[2])+g.lightPosition[2]
 
 //sound stuff
-#define TOTALSOUNDS 4
+#define TOTALSOUNDS 6
 ALuint alSource[TOTALSOUNDS];
 ALuint alBuffer[TOTALSOUNDS];
 float pitch;
@@ -440,6 +440,8 @@ void initialize_sounds ()
     alBuffer[1] = alutCreateBufferFromFile("./audio/newbest.wav");
     alBuffer[2] = alutCreateBufferFromFile("./audio/stage.wav");
     alBuffer[3] = alutCreateBufferFromFile("./audio/engine.wav");
+    alBuffer[4] = alutCreateBufferFromFile("./audio/fall1.wav");
+    alBuffer[5] = alutCreateBufferFromFile("./audio/fall2.wav");
 
     alGenSources(TOTALSOUNDS, alSource);
 
@@ -448,6 +450,8 @@ void initialize_sounds ()
     alSourcei(alSource[1], AL_BUFFER, alBuffer[1]);
     alSourcei(alSource[2], AL_BUFFER, alBuffer[2]);
     alSourcei(alSource[3], AL_BUFFER, alBuffer[3]);
+    alSourcei(alSource[4], AL_BUFFER, alBuffer[4]);
+    alSourcei(alSource[5], AL_BUFFER, alBuffer[5]);
 }
 
 void play_sound (int track, float pitch, bool loop)
@@ -1105,14 +1109,21 @@ void physics(void)
 		VecMake(track->vert[track->face[i][0]][0], track->vert[track->face[i][0]][1], track->vert[track->face[i][0]][2], c);
 		VecMake(track->vert[track->face[i][1]][0], track->vert[track->face[i][1]][1], track->vert[track->face[i][1]][2], b);
 		VecMake(track->vert[track->face[i][2]][0], track->vert[track->face[i][2]][1], track->vert[track->face[i][2]][2], a);
-		Flt u, v;
+		Flt u, v; 
 		if (pointInTriangle(c, b, a, kart->pos, &u, &v)) {
 			g.crash = true;
 		}
 	}
 
-	if (kart->pos[1] <= -15.0) {
+	if (kart->pos[1] <= -10.0) {
 		int checkpoint = g.conecount - 1;
+		float random = rnd();
+		cout << random << endl;
+		if (rnd() <= 0.5) {
+			play_sound(4, 1.0f, false);
+		} else {
+			play_sound(5, 1.0f, false);
+		}
 		if ( checkpoint == -1) 
 			checkpoint = 9;
 		kart->pos[0] = cones[checkpoint]->pos[0];
@@ -1369,7 +1380,7 @@ void render(void)
 }
 
 void callControls() {
-	play_sound(3, kart->vel[0], false, 0.8f);
+	play_sound(3, kart->vel[0], false, 0.4f);
 	//exit game
 	if (g.keypress[XK_Escape]) {
 		g.done = 1;
