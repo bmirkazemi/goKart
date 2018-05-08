@@ -1370,6 +1370,7 @@ void callControls(Joystick *joystick) {
 		if (event.isAxis()) {
 			if (event.number == 0 && event.value <= -200) {
 				g.keypress[97] = 1;
+				g.keypress[100] = 0;
 			}
 			if (event.number == 0 && event.value >= -199 && event.value <= 199) {
 				g.keypress[97] = 0;
@@ -1377,6 +1378,7 @@ void callControls(Joystick *joystick) {
 			}
 			if (event.number == 0 && event.value >= 200) {
 				g.keypress[100] = 1;
+				g.keypress[97] = 0;
 			}
 		}
 	}
