@@ -1090,11 +1090,11 @@ void physics(void)
 		} else {
 			play_sound(5, 1.0f, false);
 		}
-		if ( checkpoint == -1) 
-			checkpoint = 9;
-			kart->vel[0] = 0.0f;
-			kart->vel[1] = 0.0f;
-			kart->vel[2] = 0.0f; 
+	if ( checkpoint == -1) 
+		checkpoint = 9;
+		kart->vel[0] = 0.0f;
+		kart->vel[1] = 0.0f;
+		kart->vel[2] = 0.0f; 
 		kart->pos[0] = cones[checkpoint]->pos[0];
 		kart->pos[1] = cones[checkpoint]->pos[1];
 		kart->pos[2] = cones[checkpoint]->pos[2];
@@ -1379,17 +1379,61 @@ void callControls(Joystick *joystick) {
 		}
 		
 		if (event.isAxis()) {
-			if (event.number == 0 && event.value <= -200) {
+			if (event.number == 0 && event.value <= -30000) {
 				g.keypress[97] = 1;
 				g.keypress[100] = 0;
+				g.keypress[112] = 0;
+				g.keypress[92] = 0;
+				g.keypress[91] = 0;
+				g.keypress[93] = 0;
+			}
+			if (event.number == 0 && event.value >= -30000 && event.value <= -15000) {
+				g.keypress[97] = 0;
+				g.keypress[100] = 0;
+				g.keypress[112] = 1;
+				g.keypress[92] = 0;
+				g.keypress[91] = 0;
+				g.keypress[93] = 0;
+			}
+			if (event.number == 0 && event.value >= -14999 && event.value <= -200) {
+				g.keypress[97] = 0;
+				g.keypress[100] = 0;
+				g.keypress[112] = 0;
+				g.keypress[92] = 0;
+				g.keypress[91] = 1;
+				g.keypress[93] = 0;
 			}
 			if (event.number == 0 && event.value >= -199 && event.value <= 199) {
 				g.keypress[97] = 0;
 				g.keypress[100] = 0;
+				g.keypress[112] = 0;
+				g.keypress[92] = 0;
+				g.keypress[91] = 0;
+				g.keypress[93] = 0;
 			}
-			if (event.number == 0 && event.value >= 200) {
+			if (event.number == 0 && event.value <= 14999 && event.value >= 200) {
+				g.keypress[97] = 0;
+				g.keypress[100] = 0;
+				g.keypress[112] = 0;
+				g.keypress[92] = 0;
+				g.keypress[91] = 0;
+				g.keypress[93] = 1;
+			}
+			if (event.number == 0 && event.value <= 30000 && event.value >= 15000) {
+				g.keypress[97] = 0;
+				g.keypress[100] = 0;
+				g.keypress[112] = 0;
+				g.keypress[92] = 1;
+				g.keypress[91] = 0;
+				g.keypress[93] = 0;
+			}
+			if (event.number == 0 && event.value >= 30000) {
 				g.keypress[100] = 1;
 				g.keypress[97] = 0;
+				g.keypress[112] = 0;
+				g.keypress[92] = 0;
+				g.keypress[91] = 0;
+				g.keypress[93] = 0;
 			}
 		}
 	}
@@ -1463,6 +1507,34 @@ void callControls() {
 		kart->dir[0] = sin(kart->Hangle);
 		kart->dir[2] = -cos(kart->Hangle);
 		kart->rotate(0, 1.147, 0);
+	}
+	
+	if (g.keypress[112]) {
+		kart->Hangle -= 0.01f;
+		kart->dir[0] = sin(kart->Hangle);
+		kart->dir[2] = -cos(kart->Hangle);
+		kart->rotate(0, 0.57, 0);
+	}
+	
+	if (g.keypress[91]) {
+		kart->Hangle -= 0.005f;
+		kart->dir[0] = sin(kart->Hangle);
+		kart->dir[2] = -cos(kart->Hangle);
+		kart->rotate(0, 0.285, 0);
+	}
+	
+	if (g.keypress[93]) {
+		kart->Hangle += 0.005f;
+		kart->dir[0] = sin(kart->Hangle);
+		kart->dir[2] = -cos(kart->Hangle);
+		kart->rotate(0, -0.285, 0);
+	}
+	
+	if (g.keypress[92]) {
+		kart->Hangle += 0.01f;
+		kart->dir[0] = sin(kart->Hangle);
+		kart->dir[2] = -cos(kart->Hangle);
+		kart->rotate(0, -0.57, 0);
 	}
 	//turn right
 	if (g.keypress[XK_d]) {
